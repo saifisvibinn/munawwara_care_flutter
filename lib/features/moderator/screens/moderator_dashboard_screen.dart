@@ -493,12 +493,33 @@ class _SosAlertBanner extends StatelessWidget {
 // Group Card
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _GroupCard extends StatelessWidget {
+class _GroupCard extends ConsumerWidget {
   final ModeratorGroup group;
   const _GroupCard({required this.group});
 
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _DeleteGroupSheet(groupName: group.groupName),
+    );
+    if (confirmed != true) return;
+    final (ok, err) =
+        await ref.read(moderatorProvider.notifier).deleteGroup(group.id);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(
+        ok ? '"${group.groupName}" deleted.' : (err ?? 'Failed to delete group'),
+        style: const TextStyle(fontFamily: 'Lexend'),
+      ),
+      backgroundColor: ok ? const Color(0xFF1E293B) : Colors.red.shade700,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+    ));
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
@@ -545,12 +566,34 @@ class _GroupCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Status + SOS badge row
+                  // Status + SOS badge + menu row
                   Row(
                     children: [
                       _StatusBadge(),
                       const Spacer(),
-                      if (group.sosCount > 0) _SosBadge(count: group.sosCount),
+                      if (group.sosCount > 0) ...[
+                        _SosBadge(count: group.sosCount),
+                        SizedBox(width: 6.w),
+                      ],
+                      // More options menu
+                      GestureDetector(
+                        onTap: () => _confirmDelete(context, ref),
+                        child: Container(
+                          width: 30.w,
+                          height: 30.w,
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF243B2E)
+                                : const Color(0xFFF6F8F7),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Symbols.more_vert,
+                            size: 16.w,
+                            color: AppColors.textMutedLight,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
 
@@ -795,6 +838,121 @@ class _VertDivider extends StatelessWidget {
       width: 1,
       height: 40.h,
       color: isDark ? const Color(0xFF2D4A3A) : const Color(0xFFF1F5F4),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Delete Group Confirmation Sheet
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _DeleteGroupSheet extends StatelessWidget {
+  final String groupName;
+  const _DeleteGroupSheet({required this.groupName});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      margin: EdgeInsets.fromLTRB(12.w, 0, 12.w, 24.h),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1A2C24) : Colors.white,
+        borderRadius: BorderRadius.circular(28.r),
+      ),
+      padding: EdgeInsets.fromLTRB(24.w, 20.h, 24.w, 12.h),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Drag handle
+          Container(
+            width: 36.w,
+            height: 4.h,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF2D4A3A) : const Color(0xFFE2E8F0),
+              borderRadius: BorderRadius.circular(2.r),
+            ),
+          ),
+          SizedBox(height: 20.h),
+          // Warning icon
+          Container(
+            width: 56.w,
+            height: 56.w,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF1F2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Symbols.delete_forever,
+                size: 28.w, color: const Color(0xFFDC2626), fill: 1),
+          ),
+          SizedBox(height: 16.h),
+          Text(
+            'Delete Group?',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontWeight: FontWeight.w700,
+              fontSize: 18.sp,
+              color: isDark ? Colors.white : AppColors.textDark,
+            ),
+          ),
+          SizedBox(height: 8.h),
+          Text(
+            'Are you sure you want to delete "$groupName"? This action cannot be undone and all pilgrims will be removed from the group.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 13.sp,
+              color: AppColors.textMutedLight,
+              height: 1.5,
+            ),
+          ),
+          SizedBox(height: 24.h),
+          // Delete button
+          SizedBox(
+            width: double.infinity,
+            height: 50.h,
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFDC2626),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14.r)),
+              ),
+              child: Text(
+                'Delete Group',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14.sp,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(height: 10.h),
+          // Cancel button
+          SizedBox(
+            width: double.infinity,
+            height: 50.h,
+            child: TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              style: TextButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14.r)),
+              ),
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14.sp,
+                  color: AppColors.textMutedLight,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

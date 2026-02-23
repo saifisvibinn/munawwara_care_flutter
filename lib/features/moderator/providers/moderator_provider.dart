@@ -246,6 +246,23 @@ class ModeratorNotifier extends Notifier<ModeratorState> {
     }
   }
 
+  // Delete a group — returns (success, errorMessage)
+  Future<(bool, String?)> deleteGroup(String groupId) async {
+    try {
+      await ApiService.dio.delete('/groups/$groupId');
+      final updated = state.groups.where((g) => g.id != groupId).toList();
+      state = state.copyWith(
+        groups: updated,
+        selectedGroupIndex: 0,
+      );
+      return (true, null);
+    } on DioException catch (e) {
+      return (false, ApiService.parseError(e));
+    } catch (e) {
+      return (false, e.toString());
+    }
+  }
+
   // Broadcast urgent SOS message to all pilgrims in the current group
   Future<bool> broadcastSOS() async {
     final group = state.currentGroup;
