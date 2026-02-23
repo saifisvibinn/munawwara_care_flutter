@@ -20,7 +20,14 @@ import '../providers/moderator_provider.dart';
 
 class ModeratorGroupMapScreen extends ConsumerStatefulWidget {
   final ModeratorGroup group;
-  const ModeratorGroupMapScreen({super.key, required this.group});
+  /// If set, the map will center on this pilgrim's location on load.
+  final String? focusPilgrimId;
+
+  const ModeratorGroupMapScreen({
+    super.key,
+    required this.group,
+    this.focusPilgrimId,
+  });
 
   @override
   ConsumerState<ModeratorGroupMapScreen> createState() =>
@@ -58,6 +65,22 @@ class _ModeratorGroupMapScreenState
   }
 
   Future<void> _initLocation() async {
+    // If we have a specific pilgrim to focus, center there first
+    if (widget.focusPilgrimId != null) {
+      final target = widget.group.pilgrims
+          .cast<PilgrimInGroup?>()
+          .firstWhere((p) => p?.id == widget.focusPilgrimId,
+              orElse: () => null);
+      if (target != null && target.hasLocation) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _mapController.move(
+                LatLng(target.lat!, target.lng!), 17);
+          }
+        });
+      }
+    }
+
     final status = await Permission.locationWhenInUse.request();
     if (!status.isGranted || !mounted) return;
     try {
@@ -68,7 +91,10 @@ class _ModeratorGroupMapScreenState
       );
       if (!mounted) return;
       setState(() => _myLocation = LatLng(pos.latitude, pos.longitude));
-      _mapController.move(_myLocation!, 15);
+      // Only auto-center on me if we're not focusing a specific pilgrim
+      if (widget.focusPilgrimId == null) {
+        _mapController.move(_myLocation!, 15);
+      }
     } catch (_) {}
     _locationSub =
         Geolocator.getPositionStream(

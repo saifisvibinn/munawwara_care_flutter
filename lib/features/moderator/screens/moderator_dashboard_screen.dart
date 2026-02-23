@@ -4,8 +4,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../providers/moderator_provider.dart';
 import 'create_group_screen.dart';
+import 'group_management_screen.dart';
 import 'moderator_group_map_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -523,11 +525,18 @@ class _GroupCard extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => ModeratorGroupMapScreen(group: group),
-        ),
-      ),
+      onTap: () {
+        final userId =
+            ref.read(authProvider).userId ?? '';
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => GroupManagementScreen(
+              groupId: group.id,
+              currentUserId: userId,
+            ),
+          ),
+        );
+      },
       child: Container(
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1A2C24) : Colors.white,
@@ -575,22 +584,20 @@ class _GroupCard extends ConsumerWidget {
                         _SosBadge(count: group.sosCount),
                         SizedBox(width: 6.w),
                       ],
-                      // More options menu
+                      // Delete button
                       GestureDetector(
                         onTap: () => _confirmDelete(context, ref),
                         child: Container(
-                          width: 30.w,
-                          height: 30.w,
+                          width: 34.w,
+                          height: 34.w,
                           decoration: BoxDecoration(
-                            color: isDark
-                                ? const Color(0xFF243B2E)
-                                : const Color(0xFFF6F8F7),
+                            color: Colors.red.withOpacity(0.1),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
-                            Symbols.more_vert,
-                            size: 16.w,
-                            color: AppColors.textMutedLight,
+                            Symbols.delete_outline,
+                            size: 18.w,
+                            color: Colors.red,
                           ),
                         ),
                       ),
@@ -684,24 +691,32 @@ class _GroupCard extends ConsumerWidget {
                   SizedBox(height: 14.h),
 
                   // View on Map link
-                  Row(
-                    children: [
-                      Text(
-                        'View on Map',
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13.sp,
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            ModeratorGroupMapScreen(group: group),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          'View on Map',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13.sp,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const Spacer(),
+                        Icon(
+                          Symbols.arrow_forward,
+                          size: 18.w,
                           color: AppColors.primary,
                         ),
-                      ),
-                      const Spacer(),
-                      Icon(
-                        Symbols.arrow_forward,
-                        size: 18.w,
-                        color: AppColors.primary,
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),

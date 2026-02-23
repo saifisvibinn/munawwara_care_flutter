@@ -90,29 +90,78 @@ class PilgrimInGroup {
 
 enum BatteryStatus { good, medium, low, unknown }
 
+// ── Co-moderator model ────────────────────────────────────────────────────────
+
+class GroupModerator {
+  final String id;
+  final String fullName;
+  final String? email;
+
+  const GroupModerator({
+    required this.id,
+    required this.fullName,
+    this.email,
+  });
+
+  factory GroupModerator.fromJson(Map<String, dynamic> j) => GroupModerator(
+        id: j['_id']?.toString() ?? '',
+        fullName: j['full_name']?.toString() ?? '',
+        email: j['email']?.toString(),
+      );
+
+  String get initials {
+    final parts = fullName.trim().split(' ');
+    if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    return fullName.isNotEmpty ? fullName[0].toUpperCase() : '?';
+  }
+}
+
 // ── Group model ───────────────────────────────────────────────────────────────
 
 class ModeratorGroup {
   final String id;
   final String groupName;
   final String groupCode;
+  final String createdBy;
+  final List<GroupModerator> moderators;
   final List<PilgrimInGroup> pilgrims;
 
   const ModeratorGroup({
     required this.id,
     required this.groupName,
     required this.groupCode,
+    required this.createdBy,
+    required this.moderators,
     required this.pilgrims,
   });
 
   factory ModeratorGroup.fromJson(Map<String, dynamic> j) => ModeratorGroup(
-    id: j['_id']?.toString() ?? '',
-    groupName: j['group_name']?.toString() ?? '',
-    groupCode: j['group_code']?.toString() ?? '',
-    pilgrims: (j['pilgrims'] as List<dynamic>? ?? [])
-        .map((p) => PilgrimInGroup.fromJson(p as Map<String, dynamic>))
-        .toList(),
-  );
+        id: j['_id']?.toString() ?? '',
+        groupName: j['group_name']?.toString() ?? '',
+        groupCode: j['group_code']?.toString() ?? '',
+        createdBy: j['created_by']?.toString() ?? '',
+        moderators: (j['moderator_ids'] as List<dynamic>? ?? [])
+            .whereType<Map<String, dynamic>>()
+            .map(GroupModerator.fromJson)
+            .toList(),
+        pilgrims: (j['pilgrims'] as List<dynamic>? ?? [])
+            .map((p) => PilgrimInGroup.fromJson(p as Map<String, dynamic>))
+            .toList(),
+      );
+
+  ModeratorGroup copyWith({
+    List<PilgrimInGroup>? pilgrims,
+    List<GroupModerator>? moderators,
+    String? groupName,
+  }) =>
+      ModeratorGroup(
+        id: id,
+        groupName: groupName ?? this.groupName,
+        groupCode: groupCode,
+        createdBy: createdBy,
+        moderators: moderators ?? this.moderators,
+        pilgrims: pilgrims ?? this.pilgrims,
+      );
 
   int get totalPilgrims => pilgrims.length;
   int get onlineCount => pilgrims.where((p) => p.hasLocation).length;
@@ -219,14 +268,100 @@ class ModeratorNotifier extends Notifier<ModeratorState> {
         if (p.id == pilgrimId) return p.copyWith(hasSOS: active);
         return p;
       }).toList();
-      return ModeratorGroup(
-        id: g.id,
-        groupName: g.groupName,
-        groupCode: g.groupCode,
-        pilgrims: pilgrims,
-      );
+      return g.copyWith(pilgrims: pilgrims);
     }).toList();
     state = state.copyWith(groups: groups);
+  }
+
+  // ── Group management ──────────────────────────────────────────────────────
+
+  // Add a pilgrim by email / phone / national ID
+  Future<(bool, String?)> addPilgrimToGroup(
+      String groupId, String identifier) async {
+    try {
+      await ApiService.dio.post(
+        '/groups/$groupId/add-pilgrim',
+        data: {'identifier': identifier.trim()},
+      );
+      await refreshGroup(groupId);
+      return (true, null);
+    } on DioException catch (e) {
+      return (false, ApiService.parseError(e));
+    } catch (e) {
+      return (false, e.toString());
+    }
+  }
+
+  // Remove a pilgrim from the group
+  Future<(bool, String?)> removePilgrimFromGroup(
+      String groupId, String pilgrimId) async {
+    try {
+      await ApiService.dio.post(
+        '/groups/$groupId/remove-pilgrim',
+        data: {'user_id': pilgrimId},
+      );
+      // Optimistic local update
+      final groups = state.groups.map((g) {
+        if (g.id != groupId) return g;
+        return g.copyWith(
+          pilgrims: g.pilgrims.where((p) => p.id != pilgrimId).toList(),
+        );
+      }).toList();
+      state = state.copyWith(groups: groups);
+      return (true, null);
+    } on DioException catch (e) {
+      return (false, ApiService.parseError(e));
+    } catch (e) {
+      return (false, e.toString());
+    }
+  }
+
+  // Invite a new moderator by email (sends email invite)
+  Future<(bool, String?)> inviteModerator(
+      String groupId, String email) async {
+    try {
+      await ApiService.dio.post(
+        '/groups/$groupId/invite',
+        data: {'email': email.trim()},
+      );
+      return (true, null);
+    } on DioException catch (e) {
+      return (false, ApiService.parseError(e));
+    } catch (e) {
+      return (false, e.toString());
+    }
+  }
+
+  // Remove a moderator (creator only)
+  Future<(bool, String?)> removeModeratorFromGroup(
+      String groupId, String modId) async {
+    try {
+      await ApiService.dio.delete('/groups/$groupId/moderators/$modId');
+      final groups = state.groups.map((g) {
+        if (g.id != groupId) return g;
+        return g.copyWith(
+          moderators: g.moderators.where((m) => m.id != modId).toList(),
+        );
+      }).toList();
+      state = state.copyWith(groups: groups);
+      return (true, null);
+    } on DioException catch (e) {
+      return (false, ApiService.parseError(e));
+    } catch (e) {
+      return (false, e.toString());
+    }
+  }
+
+  // Re-fetch a single group and update state
+  Future<void> refreshGroup(String groupId) async {
+    try {
+      final resp = await ApiService.dio.get('/groups/$groupId');
+      final updated =
+          ModeratorGroup.fromJson(resp.data as Map<String, dynamic>);
+      final groups =
+          state.groups.map((g) => g.id == groupId ? updated : g).toList();
+      state = state.copyWith(groups: groups);
+    } catch (_) {}
   }
 
   // Create a new group — returns (success, errorMessage)
