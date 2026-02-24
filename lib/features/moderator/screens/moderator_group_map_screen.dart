@@ -51,8 +51,9 @@ class _ModeratorGroupMapScreenState
     super.initState();
     _initLocation();
     _searchController.addListener(() {
-      if (mounted)
+      if (mounted) {
         setState(() => _searchQuery = _searchController.text.toLowerCase());
+      }
     });
   }
 

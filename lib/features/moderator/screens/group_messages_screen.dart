@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -76,27 +77,30 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
       if (mounted) setState(() => _duration = d);
     });
     _player.onPlayerComplete.listen((_) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _playingId = null;
           _position = Duration.zero;
         });
+      }
     });
 
     // TTS listeners
     _tts.setCompletionHandler(() {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _ttsSpeaking = false;
           _ttsPlayingId = null;
         });
+      }
     });
     _tts.setErrorHandler((_) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _ttsSpeaking = false;
           _ttsPlayingId = null;
         });
+      }
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -205,7 +209,7 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
   Future<void> _startRecording() async {
     final status = await Permission.microphone.request();
     if (!status.isGranted) {
-      _snack('Microphone permission required');
+      _snack('msg_mic_required'.tr());
       return;
     }
     if (!await _recorder.hasPermission()) return;
@@ -280,7 +284,7 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
       setState(() => _isUrgent = false);
       _scrollToBottom();
     } else {
-      _snack('Failed to send message');
+      _snack('msg_send_failed'.tr());
     }
   }
 
@@ -311,7 +315,7 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
       });
       _scrollToBottom();
     } else {
-      _snack('Failed to send voice message');
+      _snack('msg_send_voice_failed'.tr());
     }
   }
 
@@ -325,7 +329,7 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
           borderRadius: BorderRadius.circular(14.r),
         ),
         title: Text(
-          'Delete message?',
+          'msg_delete_title'.tr(),
           style: TextStyle(
             fontFamily: 'Lexend',
             fontWeight: FontWeight.w700,
@@ -333,7 +337,7 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
           ),
         ),
         content: Text(
-          'This cannot be undone.',
+          'msg_delete_body'.tr(),
           style: TextStyle(
             fontFamily: 'Lexend',
             fontSize: 13.sp,
@@ -343,12 +347,15 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel', style: TextStyle(fontFamily: 'Lexend')),
+            child: Text(
+              'settings_cancel'.tr(),
+              style: const TextStyle(fontFamily: 'Lexend'),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             child: Text(
-              'Delete',
+              'msg_delete_confirm'.tr(),
               style: TextStyle(
                 fontFamily: 'Lexend',
                 color: Colors.red.shade600,
@@ -361,7 +368,7 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
     );
     if (confirmed != true) return;
     final ok = await ref.read(messageProvider.notifier).deleteMessage(msg.id);
-    if (!ok) _snack('Failed to delete');
+    if (!ok) _snack('msg_delete_failed'.tr());
   }
 
   void _snack(String text) {
@@ -446,7 +453,7 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  'Group Broadcasts',
+                  'msg_broadcasts'.tr(),
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 12.sp,
@@ -489,7 +496,7 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
             Icon(Symbols.campaign, size: 48.w, color: AppColors.textMutedLight),
             SizedBox(height: 12.h),
             Text(
-              'No messages sent yet',
+              'msg_empty'.tr(),
               style: TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 14.sp,
@@ -572,7 +579,7 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    msg.sender?.fullName ?? 'You',
+                    msg.sender?.fullName ?? 'you'.tr(),
                     style: TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 11.sp,
@@ -647,7 +654,7 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
               ),
               SizedBox(width: 4.w),
               Text(
-                'TTS Message',
+                'msg_tts_label'.tr(),
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 11.sp,
@@ -687,7 +694,7 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
                 ),
                 SizedBox(width: 6.w),
                 Text(
-                  isSpeaking ? 'Playing...' : 'Play Aloud',
+                  isSpeaking ? 'msg_playing'.tr() : 'msg_play_aloud'.tr(),
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontWeight: FontWeight.w600,
@@ -725,7 +732,7 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
           Row(
             children: [
               _TypeButton(
-                label: 'Text',
+                label: 'msg_tab_text'.tr(),
                 icon: Symbols.text_fields,
                 selected: _composeType == 'text',
                 onTap: () => setState(() {
@@ -735,14 +742,14 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
               ),
               SizedBox(width: 6.w),
               _TypeButton(
-                label: 'Voice',
+                label: 'msg_tab_voice'.tr(),
                 icon: Symbols.mic,
                 selected: _composeType == 'voice',
                 onTap: () => setState(() => _composeType = 'voice'),
               ),
               SizedBox(width: 6.w),
               _TypeButton(
-                label: 'TTS',
+                label: 'msg_tab_tts'.tr(),
                 icon: Symbols.volume_up,
                 selected: _composeType == 'tts',
                 onTap: () => setState(() {
@@ -780,7 +787,7 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
                       ),
                       SizedBox(width: 4.w),
                       Text(
-                        'Urgent',
+                        'msg_urgent'.tr(),
                         style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 12.sp,
@@ -828,8 +835,8 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
               ),
               decoration: InputDecoration(
                 hintText: _composeType == 'tts'
-                    ? 'Type text to speak aloud…'
-                    : 'Type a message…',
+                    ? 'msg_hint_tts'.tr()
+                    : 'msg_hint_text'.tr(),
                 hintStyle: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 14.sp,
@@ -899,7 +906,7 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
               Icon(Symbols.mic, size: 20.w, color: Colors.white),
               SizedBox(width: 8.w),
               Text(
-                'Tap to Record',
+                'msg_tap_record'.tr(),
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontWeight: FontWeight.w600,
@@ -937,7 +944,7 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Recording…',
+                'msg_recording'.tr(),
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontWeight: FontWeight.w600,
@@ -970,7 +977,7 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
                 Icon(Symbols.stop, size: 16.w, color: Colors.white),
                 SizedBox(width: 6.w),
                 Text(
-                  'Stop',
+                  'msg_stop'.tr(),
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontWeight: FontWeight.w600,
@@ -1064,8 +1071,8 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
     final m = dt.minute.toString().padLeft(2, '0');
     final a = dt.hour >= 12 ? 'PM' : 'AM';
     final time = '$h:$m $a';
-    if (diff == 0) return 'Today  $time';
-    if (diff == 1) return 'Yesterday  $time';
+    if (diff == 0) return '${'inbox_today'.tr()}  $time';
+    if (diff == 1) return '${'inbox_yesterday'.tr()}  $time';
     return '${dt.day}/${dt.month}/${dt.year}  $time';
   }
 }

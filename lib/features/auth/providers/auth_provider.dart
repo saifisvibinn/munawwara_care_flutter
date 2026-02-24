@@ -14,6 +14,8 @@ class AuthState {
   final String? role;
   final String? userId;
   final String? fullName;
+  final String? email;
+  final String? phoneNumber;
 
   const AuthState({
     this.isLoading = false,
@@ -23,6 +25,8 @@ class AuthState {
     this.role,
     this.userId,
     this.fullName,
+    this.email,
+    this.phoneNumber,
   });
 
   bool get isAuthenticated => token != null;
@@ -35,7 +39,10 @@ class AuthState {
     String? role,
     String? userId,
     String? fullName,
+    String? email,
+    String? phoneNumber,
     bool clearError = false,
+    bool clearPhoneNumber = false,
   }) {
     return AuthState(
       isLoading: isLoading ?? this.isLoading,
@@ -45,6 +52,8 @@ class AuthState {
       role: role ?? this.role,
       userId: userId ?? this.userId,
       fullName: fullName ?? this.fullName,
+      email: email ?? this.email,
+      phoneNumber: clearPhoneNumber ? null : (phoneNumber ?? this.phoneNumber),
     );
   }
 }
@@ -170,6 +179,64 @@ class AuthNotifier extends Notifier<AuthState> {
         role: data['role'] as String,
         userId: data['user_id'] as String,
         fullName: data['full_name'] as String,
+      );
+      return true;
+    } on DioException catch (e) {
+      state = state.copyWith(isLoading: false, error: ApiService.parseError(e));
+      return false;
+    }
+  }
+
+  // ── Fetch profile ───────────────────────────────────────────────────────────
+  Future<void> fetchProfile() async {
+    try {
+      final response = await ApiService.dio.get('/auth/me');
+      final data = response.data as Map<String, dynamic>;
+      state = state.copyWith(
+        fullName: data['full_name'] as String?,
+        email: data['email'] as String?,
+        phoneNumber: data['phone_number'] as String?,
+      );
+      // Persist updated full_name to prefs
+      if (data['full_name'] != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user_full_name', data['full_name'] as String);
+      }
+    } on DioException catch (_) {
+      // Silent — profile fetch failures shouldn't disrupt UX
+    }
+  }
+
+  // ── Update profile ──────────────────────────────────────────────────────────
+  Future<bool> updateProfile({
+    required String fullName,
+    String? phoneNumber,
+  }) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      final body = <String, dynamic>{'full_name': fullName};
+      if (phoneNumber != null && phoneNumber.trim().isNotEmpty) {
+        body['phone_number'] = phoneNumber.trim();
+      }
+      final response = await ApiService.dio.put(
+        '/auth/update-profile',
+        data: body,
+      );
+      final userData =
+          (response.data as Map<String, dynamic>)['user']
+              as Map<String, dynamic>;
+
+      final newName = userData['full_name'] as String? ?? fullName;
+      final newPhone = userData['phone_number'] as String?;
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_full_name', newName);
+
+      state = state.copyWith(
+        isLoading: false,
+        fullName: newName,
+        phoneNumber: newPhone,
+        clearError: true,
       );
       return true;
     } on DioException catch (e) {

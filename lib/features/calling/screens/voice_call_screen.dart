@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -52,7 +53,7 @@ class _VoiceCallScreenState extends ConsumerState<VoiceCallScreen> {
                 children: [
                   const Spacer(),
                   Text(
-                    'Internet Call',
+                    'call_internet'.tr(),
                     style: TextStyle(
                       color: Colors.white54,
                       fontSize: 13.sp,
@@ -134,17 +135,18 @@ class _VoiceCallScreenState extends ConsumerState<VoiceCallScreen> {
                 children: [
                   _ControlButton(
                     icon: call.isMuted ? Symbols.mic_off : Symbols.mic,
-                    label: call.isMuted ? 'Unmute' : 'Mute',
+                    label: call.isMuted ? 'call_unmute'.tr() : 'call_mute'.tr(),
                     active: call.isMuted,
-                    onTap: () =>
-                        ref.read(callProvider.notifier).toggleMute(),
+                    onTap: () => ref.read(callProvider.notifier).toggleMute(),
                   ),
                   SizedBox(width: 32.w),
                   _ControlButton(
                     icon: call.isSpeakerOn
                         ? Symbols.volume_up
                         : Symbols.volume_down,
-                    label: call.isSpeakerOn ? 'Speaker' : 'Earpiece',
+                    label: call.isSpeakerOn
+                        ? 'call_speaker'.tr()
+                        : 'call_earpiece'.tr(),
                     active: call.isSpeakerOn,
                     onTap: () =>
                         ref.read(callProvider.notifier).toggleSpeaker(),
@@ -160,8 +162,9 @@ class _VoiceCallScreenState extends ConsumerState<VoiceCallScreen> {
                 onTap: () {
                   if (call.status == CallStatus.calling) {
                     // Cancel outgoing call
-                    SocketService.emit(
-                        'call-cancel', {'to': call.remoteUserId});
+                    SocketService.emit('call-cancel', {
+                      'to': call.remoteUserId,
+                    });
                     ref.read(callProvider.notifier).endCall();
                   } else {
                     ref.read(callProvider.notifier).endCall();
@@ -208,7 +211,7 @@ class _VoiceCallScreenState extends ConsumerState<VoiceCallScreen> {
   String _statusLabel(CallState call) {
     switch (call.status) {
       case CallStatus.calling:
-        return 'Calling...';
+        return 'call_calling'.tr();
       case CallStatus.connected:
         return call.formattedDuration;
       case CallStatus.ended:
@@ -221,15 +224,15 @@ class _VoiceCallScreenState extends ConsumerState<VoiceCallScreen> {
   String _endReasonLabel(String? reason) {
     switch (reason) {
       case 'declined':
-        return 'Call declined';
+        return 'call_declined'.tr();
       case 'busy':
-        return 'User is busy';
+        return 'call_busy'.tr();
       case 'cancelled':
-        return 'Call cancelled';
+        return 'call_cancelled'.tr();
       case 'error':
-        return 'Connection error';
+        return 'call_error'.tr();
       default:
-        return 'Call ended';
+        return 'call_ended'.tr();
     }
   }
 }
@@ -283,4 +286,3 @@ class _ControlButton extends StatelessWidget {
     );
   }
 }
-

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -46,10 +47,10 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
   String _filter = 'all'; // all | urgent | voice | tts
 
   final _filters = const [
-    ('all', 'All'),
-    ('urgent', 'Urgent'),
-    ('voice', 'Voice'),
-    ('tts', 'TTS'),
+    ('all', 'inbox_filter_all'),
+    ('urgent', 'inbox_filter_urgent'),
+    ('voice', 'inbox_filter_voice'),
+    ('tts', 'inbox_filter_tts'),
   ];
 
   @override
@@ -64,27 +65,30 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
       if (mounted) setState(() => _duration = dur);
     });
     _player.onPlayerComplete.listen((_) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _playingId = null;
           _position = Duration.zero;
         });
+      }
     });
 
     // TTS
     _tts.setCompletionHandler(() {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _ttsSpeaking = false;
           _ttsPlayingId = null;
         });
+      }
     });
     _tts.setErrorHandler((_) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _ttsSpeaking = false;
           _ttsPlayingId = null;
         });
+      }
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -249,7 +253,7 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  'Broadcasts & Updates',
+                  'inbox_title'.tr(),
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 12.sp,
@@ -291,7 +295,7 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
         itemCount: _filters.length,
-        separatorBuilder: (_, __) => SizedBox(width: 8.w),
+        separatorBuilder: (_, _) => SizedBox(width: 8.w),
         itemBuilder: (_, i) {
           final (key, label) = _filters[i];
           final selected = _filter == key;
@@ -310,7 +314,7 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
                 ),
               ),
               child: Text(
-                label,
+                label.tr(),
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 12.sp,
@@ -337,7 +341,7 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
           Icon(Symbols.inbox, size: 48.w, color: AppColors.textMutedLight),
           SizedBox(height: 12.h),
           Text(
-            'No messages yet',
+            'inbox_empty'.tr(),
             style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 15.sp,
@@ -417,7 +421,7 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                msg.sender?.fullName ?? 'Moderator',
+                msg.sender?.fullName ?? 'settings_role_moderator'.tr(),
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontWeight: FontWeight.w600,
@@ -502,7 +506,7 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
               ),
               SizedBox(width: 4.w),
               Text(
-                'TTS Message',
+                'msg_tts_label'.tr(),
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 11.sp,
@@ -542,7 +546,7 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
                 ),
                 SizedBox(width: 6.w),
                 Text(
-                  isSpeaking ? 'Playing...' : 'Play Aloud',
+                  isSpeaking ? 'msg_playing'.tr() : 'msg_play_aloud'.tr(),
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontWeight: FontWeight.w600,
@@ -583,8 +587,8 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
     final today = DateTime(now.year, now.month, now.day);
     final msgDay = DateTime(dt.year, dt.month, dt.day);
     final diff = today.difference(msgDay).inDays;
-    if (diff == 0) return 'Today  ${_formatTime(dt)}';
-    if (diff == 1) return 'Yesterday  ${_formatTime(dt)}';
+    if (diff == 0) return '${'inbox_today'.tr()}  ${_formatTime(dt)}';
+    if (diff == 1) return '${'inbox_yesterday'.tr()}  ${_formatTime(dt)}';
     return '${dt.day}/${dt.month}/${dt.year}  ${_formatTime(dt)}';
   }
 }

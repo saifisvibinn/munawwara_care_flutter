@@ -201,7 +201,7 @@ class PilgrimNotifier extends Notifier<PilgrimState> {
         data: {
           'latitude': latitude,
           'longitude': longitude,
-          if (batteryPercent != null) 'battery_percent': batteryPercent,
+          'battery_percent': ?batteryPercent,
         },
       );
       if (batteryPercent != null) {

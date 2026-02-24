@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -60,7 +61,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
   Future<void> _submit() async {
     final name = _nameController.text.trim();
     if (name.length < 3) {
-      setState(() => _fieldError = 'Group name must be at least 3 characters');
+      setState(() => _fieldError = 'create_group_name_error'.tr());
       return;
     }
     setState(() => _isLoading = true);
@@ -80,7 +81,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
       });
       _successAnim.forward();
     } else {
-      setState(() => _fieldError = err ?? 'Something went wrong');
+      setState(() => _fieldError = err ?? 'create_group_error_generic'.tr());
     }
   }
 
@@ -168,7 +169,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
         SizedBox(height: 20.h),
 
         Text(
-          'Create New Group',
+          'create_group_title'.tr(),
           style: TextStyle(
             fontFamily: 'Lexend',
             fontWeight: FontWeight.w700,
@@ -180,7 +181,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
         SizedBox(height: 6.h),
 
         Text(
-          'Set up a group for your pilgrims. A unique join code will be generated automatically.',
+          'create_group_subtitle'.tr(),
           style: TextStyle(
             fontFamily: 'Lexend',
             fontSize: 13.sp,
@@ -193,7 +194,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
 
         // ── Group name field ──
         Text(
-          'Group Name',
+          'create_group_name'.tr(),
           style: TextStyle(
             fontFamily: 'Lexend',
             fontWeight: FontWeight.w600,
@@ -239,7 +240,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
               color: isDark ? const Color(0xFFE2E8F0) : AppColors.textDark,
             ),
             decoration: InputDecoration(
-              hintText: 'e.g. Group A – Mecca 2026',
+              hintText: 'create_group_name_hint'.tr(),
               hintStyle: TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 15.sp,
@@ -302,7 +303,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
               SizedBox(width: 10.w),
               Expanded(
                 child: Text(
-                  'Pilgrims can join using the code or by scanning a QR that you can share after creating the group.',
+                  'create_group_qr_info'.tr(),
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 12.sp,
@@ -349,7 +350,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
                       Icon(Symbols.add, size: 20.w),
                       SizedBox(width: 8.w),
                       Text(
-                        'Create Group',
+                        'create_group_btn'.tr(),
                         style: TextStyle(
                           fontFamily: 'Lexend',
                           fontWeight: FontWeight.w700,
@@ -394,7 +395,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
           SizedBox(height: 20.h),
 
           Text(
-            'Group Created!',
+            'create_group_success_title'.tr(),
             style: TextStyle(
               fontFamily: 'Lexend',
               fontWeight: FontWeight.w700,
@@ -439,7 +440,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
             child: Column(
               children: [
                 Text(
-                  'YOUR GROUP CODE',
+                  'create_group_code_label'.tr(),
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontWeight: FontWeight.w600,
@@ -478,9 +479,9 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
                     );
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: const Text(
-                          'Code copied to clipboard!',
-                          style: TextStyle(fontFamily: 'Lexend'),
+                        content: Text(
+                          'create_group_code_copied'.tr(),
+                          style: const TextStyle(fontFamily: 'Lexend'),
                         ),
                         behavior: SnackBarBehavior.floating,
                         backgroundColor: AppColors.primaryDark,
@@ -512,7 +513,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
                         ),
                         SizedBox(width: 6.w),
                         Text(
-                          'Copy Code',
+                          'create_group_copy_code'.tr(),
                           style: TextStyle(
                             fontFamily: 'Lexend',
                             fontWeight: FontWeight.w600,
@@ -528,7 +529,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
                 SizedBox(height: 14.h),
 
                 Text(
-                  'Share this code with your pilgrims so they can join.',
+                  'create_group_code_info'.tr(),
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontFamily: 'Lexend',
@@ -558,7 +559,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
                 ),
               ),
               child: Text(
-                'Back to My Groups',
+                'create_group_back'.tr(),
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontWeight: FontWeight.w700,

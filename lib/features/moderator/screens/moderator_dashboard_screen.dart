@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -13,6 +14,7 @@ import '../../notifications/providers/notification_provider.dart';
 import '../../notifications/screens/alerts_tab.dart';
 import '../providers/moderator_provider.dart';
 import 'create_group_screen.dart';
+import 'moderator_profile_screen.dart';
 import 'group_management_screen.dart';
 import 'moderator_group_map_screen.dart';
 
@@ -175,7 +177,7 @@ class _GroupsHomeTabState extends ConsumerState<_GroupsHomeTab> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'My Groups',
+                                'dashboard_my_groups'.tr(),
                                 style: TextStyle(
                                   fontFamily: 'Lexend',
                                   fontWeight: FontWeight.w700,
@@ -187,7 +189,7 @@ class _GroupsHomeTabState extends ConsumerState<_GroupsHomeTab> {
                               ),
                               SizedBox(height: 2.h),
                               Text(
-                                'Manage your active pilgrimages',
+                                'dashboard_subtitle'.tr(),
                                 style: TextStyle(
                                   fontFamily: 'Lexend',
                                   fontSize: 13.sp,
@@ -198,7 +200,11 @@ class _GroupsHomeTabState extends ConsumerState<_GroupsHomeTab> {
                           ),
                         ),
                         GestureDetector(
-                          onTap: () {},
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const ModeratorProfileScreen(),
+                            ),
+                          ),
                           child: Container(
                             width: 42.w,
                             height: 42.w,
@@ -274,7 +280,7 @@ class _GroupsHomeTabState extends ConsumerState<_GroupsHomeTab> {
                                     : AppColors.textDark,
                               ),
                               decoration: InputDecoration(
-                                hintText: 'Search groups...',
+                                hintText: 'dashboard_search_groups'.tr(),
                                 hintStyle: TextStyle(
                                   fontFamily: 'Lexend',
                                   fontSize: 14.sp,
@@ -344,7 +350,7 @@ class _GroupsHomeTabState extends ConsumerState<_GroupsHomeTab> {
               ),
 
             // ── Error ──
-            if (!state.isLoading && state.error != null)
+            if (!state.isLoading && state.error != null && state.groups.isEmpty)
               SliverToBoxAdapter(
                 child: Padding(
                   padding: EdgeInsets.symmetric(
@@ -379,7 +385,7 @@ class _GroupsHomeTabState extends ConsumerState<_GroupsHomeTab> {
                           color: AppColors.primary,
                         ),
                         label: Text(
-                          'Retry',
+                          'dashboard_retry'.tr(),
                           style: TextStyle(
                             fontFamily: 'Lexend',
                             fontSize: 14.sp,
@@ -465,7 +471,7 @@ class _SosAlertBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Active SOS Alert',
+                  'dashboard_sos_active'.tr(),
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontWeight: FontWeight.w700,
@@ -501,7 +507,7 @@ class _SosAlertBanner extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8.r),
               ),
               child: Text(
-                'View',
+                'dashboard_view'.tr(),
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontWeight: FontWeight.w700,
@@ -687,7 +693,7 @@ class _GroupCard extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: _StatCell(
-                            label: 'PILGRIMS',
+                            label: 'dashboard_stat_pilgrims'.tr(),
                             value: '${group.totalPilgrims}',
                             valueColor: isDark
                                 ? Colors.white
@@ -697,7 +703,7 @@ class _GroupCard extends ConsumerWidget {
                         _VertDivider(isDark: isDark),
                         Expanded(
                           child: _StatCell(
-                            label: 'ONLINE',
+                            label: 'dashboard_stat_online'.tr(),
                             value: '${group.onlineCount}',
                             valueColor: const Color(0xFF16A34A),
                           ),
@@ -705,7 +711,7 @@ class _GroupCard extends ConsumerWidget {
                         _VertDivider(isDark: isDark),
                         Expanded(
                           child: _StatCell(
-                            label: 'BATT LOW',
+                            label: 'dashboard_stat_batt_low'.tr(),
                             value: group.batteryLowCount > 0
                                 ? '${group.batteryLowCount}'
                                 : '—',
@@ -730,7 +736,7 @@ class _GroupCard extends ConsumerWidget {
                     child: Row(
                       children: [
                         Text(
-                          'View on Map',
+                          'dashboard_view_on_map'.tr(),
                           style: TextStyle(
                             fontFamily: 'Lexend',
                             fontWeight: FontWeight.w700,
@@ -781,7 +787,7 @@ class _StatusBadge extends StatelessWidget {
           ),
           SizedBox(width: 5.w),
           Text(
-            'Active',
+            'dashboard_active'.tr(),
             style: TextStyle(
               fontFamily: 'Lexend',
               fontWeight: FontWeight.w700,
@@ -934,7 +940,7 @@ class _DeleteGroupSheet extends StatelessWidget {
           ),
           SizedBox(height: 16.h),
           Text(
-            'Delete Group?',
+            'dashboard_delete_title'.tr(),
             style: TextStyle(
               fontFamily: 'Lexend',
               fontWeight: FontWeight.w700,
@@ -944,7 +950,7 @@ class _DeleteGroupSheet extends StatelessWidget {
           ),
           SizedBox(height: 8.h),
           Text(
-            'Are you sure you want to delete "$groupName"? This action cannot be undone and all pilgrims will be removed from the group.',
+            'dashboard_delete_body'.tr(namedArgs: {'name': groupName}),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontFamily: 'Lexend',
@@ -969,7 +975,7 @@ class _DeleteGroupSheet extends StatelessWidget {
                 ),
               ),
               child: Text(
-                'Delete Group',
+                'dashboard_delete_confirm'.tr(),
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontWeight: FontWeight.w700,
@@ -991,7 +997,7 @@ class _DeleteGroupSheet extends StatelessWidget {
                 ),
               ),
               child: Text(
-                'Cancel',
+                'dashboard_delete_cancel'.tr(),
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontWeight: FontWeight.w600,
@@ -1050,7 +1056,7 @@ class _CreateGroupButton extends StatelessWidget {
             ),
             SizedBox(height: 8.h),
             Text(
-              'Create New Group',
+              'dashboard_create_group'.tr(),
               style: TextStyle(
                 fontFamily: 'Lexend',
                 fontWeight: FontWeight.w700,
@@ -1091,7 +1097,7 @@ class _ModBottomNav extends ConsumerWidget {
           Expanded(
             child: _NavItem(
               icon: Symbols.grid_view,
-              label: 'Home',
+              label: 'dashboard_nav_home'.tr(),
               index: 0,
               current: currentIndex,
               onTap: onTap,
@@ -1101,7 +1107,7 @@ class _ModBottomNav extends ConsumerWidget {
           Expanded(
             child: _NavItem(
               icon: Symbols.notifications,
-              label: 'Alerts',
+              label: 'dashboard_nav_alerts'.tr(),
               index: 1,
               current: currentIndex,
               onTap: onTap,
@@ -1216,7 +1222,7 @@ class _PlaceholderTab extends StatelessWidget {
           ),
           SizedBox(height: 6.h),
           Text(
-            'Coming soon',
+            'dashboard_coming_soon'.tr(),
             style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 13.sp,

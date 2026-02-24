@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:dio/dio.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -119,7 +119,7 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
   Future<void> _navigateToPilgrim(PilgrimInGroup p) async {
     if (!p.hasLocation) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${p.firstName} has no location data')),
+        SnackBar(content: Text('${p.firstName} ${'group_not_found'.tr()}')),
       );
       return;
     }
@@ -177,7 +177,7 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
           Future<void> submit() async {
             final val = ctrl.text.trim();
             if (val.isEmpty) {
-              setSheetState(() => fieldError = 'Enter an identifier');
+              setSheetState(() => fieldError = 'group_add_enter_id'.tr());
               return;
             }
             setSheetState(() {
@@ -191,12 +191,12 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
               if (ok) {
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Pilgrim added successfully!')),
+                  SnackBar(content: Text('group_add_success'.tr())),
                 );
               } else {
                 setSheetState(() {
                   loading = false;
-                  fieldError = err ?? 'Failed to add pilgrim';
+                  fieldError = err ?? 'group_not_found'.tr();
                 });
               }
             }
@@ -247,7 +247,7 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Add Pilgrim',
+                            'group_add_pilgrim'.tr(),
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontWeight: FontWeight.w700,
@@ -256,7 +256,7 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                             ),
                           ),
                           Text(
-                            'Email, phone, or national ID',
+                            'group_add_identifier_hint'.tr(),
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 12.sp,
@@ -277,7 +277,7 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                       color: AppColors.textDark,
                     ),
                     decoration: InputDecoration(
-                      hintText: 'e.g. +966501234567 or 1234567890',
+                      hintText: 'group_add_enter_id'.tr(),
                       hintStyle: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 13.sp,
@@ -333,7 +333,7 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                               ),
                             )
                           : Text(
-                              'Add to Group',
+                              'group_add_to_group'.tr(),
                               style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontWeight: FontWeight.w600,
@@ -373,7 +373,7 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
           borderRadius: BorderRadius.circular(16.r),
         ),
         title: Text(
-          'Remove Pilgrim?',
+          'group_remove_title'.tr(),
           style: TextStyle(
             fontFamily: 'Lexend',
             fontWeight: FontWeight.w700,
@@ -381,7 +381,7 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
           ),
         ),
         content: Text(
-          'Remove ${pilgrim.fullName} from this group?',
+          '${'group_call_prefix'.tr()} ${pilgrim.fullName}?',
           style: TextStyle(
             fontFamily: 'Lexend',
             fontSize: 14.sp,
@@ -392,7 +392,7 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: Text(
-              'Cancel',
+              'group_remove_cancel'.tr(),
               style: TextStyle(
                 fontFamily: 'Lexend',
                 color: AppColors.textMutedLight,
@@ -402,7 +402,7 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(
-              'Remove',
+              'group_remove_confirm'.tr(),
               style: TextStyle(
                 fontFamily: 'Lexend',
                 color: Colors.red,
@@ -421,7 +421,9 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              ok ? '${pilgrim.firstName} removed' : err ?? 'Failed to remove',
+              ok
+                  ? '${pilgrim.firstName} ${'group_remove_confirm'.tr().toLowerCase()}'
+                  : err ?? 'group_not_found'.tr(),
             ),
             backgroundColor: ok ? null : Colors.red,
           ),
@@ -457,7 +459,7 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
             ),
             SizedBox(height: 16.h),
             Text(
-              'Call ${pilgrim.firstName}',
+              '${'group_call_prefix'.tr()} ${pilgrim.firstName}',
               style: TextStyle(
                 fontFamily: 'Lexend',
                 fontWeight: FontWeight.w700,
@@ -474,17 +476,23 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                     child: GestureDetector(
                       onTap: () async {
                         Navigator.pop(context);
-                        final uri = Uri(scheme: 'tel', path: pilgrim.phoneNumber);
+                        final uri = Uri(
+                          scheme: 'tel',
+                          path: pilgrim.phoneNumber,
+                        );
                         if (await canLaunchUrl(uri)) launchUrl(uri);
                       },
                       child: Container(
                         padding: EdgeInsets.symmetric(
-                            vertical: 18.h, horizontal: 12.w),
+                          vertical: 18.h,
+                          horizontal: 12.w,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF6F8F7),
                           borderRadius: BorderRadius.circular(16.r),
                           border: Border.all(
-                              color: AppColors.primary.withOpacity(0.2)),
+                            color: AppColors.primary.withOpacity(0.2),
+                          ),
                         ),
                         child: Column(
                           children: [
@@ -495,12 +503,15 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                                 color: AppColors.primary,
                                 shape: BoxShape.circle,
                               ),
-                              child: Icon(Symbols.smartphone,
-                                  color: Colors.white, size: 26.w),
+                              child: Icon(
+                                Symbols.smartphone,
+                                color: Colors.white,
+                                size: 26.w,
+                              ),
                             ),
                             SizedBox(height: 10.h),
                             Text(
-                              'Phone call',
+                              'group_phone_call'.tr(),
                               style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontWeight: FontWeight.w600,
@@ -510,7 +521,7 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                             ),
                             SizedBox(height: 4.h),
                             Text(
-                              'Uses carrier minutes',
+                              'group_phone_call_sub'.tr(),
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontFamily: 'Lexend',
@@ -530,24 +541,30 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                     onTap: () {
                       Navigator.pop(context);
                       // Initiate WebRTC call
-                      ref.read(callProvider.notifier).startCall(
+                      ref
+                          .read(callProvider.notifier)
+                          .startCall(
                             remoteUserId: pilgrim.id,
                             remoteUserName: pilgrim.fullName,
                           );
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                            builder: (_) => const VoiceCallScreen()),
+                          builder: (_) => const VoiceCallScreen(),
+                        ),
                       );
                     },
                     child: Container(
                       padding: EdgeInsets.symmetric(
-                          vertical: 18.h, horizontal: 12.w),
+                        vertical: 18.h,
+                        horizontal: 12.w,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFE8C97A).withOpacity(0.12),
                         borderRadius: BorderRadius.circular(16.r),
                         border: Border.all(
-                            color: const Color(0xFFE8C97A).withOpacity(0.4)),
+                          color: const Color(0xFFE8C97A).withOpacity(0.4),
+                        ),
                       ),
                       child: Column(
                         children: [
@@ -558,12 +575,15 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                               color: Color(0xFFB0924A),
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(Symbols.wifi_calling_3,
-                                color: Colors.white, size: 26.w),
+                            child: Icon(
+                              Symbols.wifi_calling_3,
+                              color: Colors.white,
+                              size: 26.w,
+                            ),
                           ),
                           SizedBox(height: 10.h),
                           Text(
-                            'Internet call',
+                            'group_internet_call'.tr(),
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontWeight: FontWeight.w600,
@@ -573,7 +593,7 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                           ),
                           SizedBox(height: 4.h),
                           Text(
-                            'Free, works anywhere',
+                            'group_internet_call_sub'.tr(),
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontFamily: 'Lexend',
@@ -635,8 +655,8 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
 
     if (group == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Group')),
-        body: const Center(child: Text('Group not found')),
+        appBar: AppBar(title: Text('dashboard_my_groups'.tr())),
+        body: Center(child: Text('group_not_found'.tr())),
       );
     }
 
@@ -771,7 +791,7 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   Text(
-                                    '${group.onlineCount}/${group.totalPilgrims} Online',
+                                    '${group.onlineCount}/${group.totalPilgrims} ${'dashboard_stat_online'.tr()}',
                                     style: TextStyle(
                                       fontFamily: 'Lexend',
                                       fontSize: 11.sp,
@@ -837,7 +857,7 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                     Icon(Symbols.person_add, size: 18.w, color: Colors.white),
                     SizedBox(width: 6.w),
                     Text(
-                      'Add Pilgrim',
+                      'group_add_pilgrim'.tr(),
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontWeight: FontWeight.w600,
@@ -891,7 +911,7 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                     child: Row(
                       children: [
                         Text(
-                          '${group.totalPilgrims} Pilgrims',
+                          '${group.totalPilgrims} ${'group_no_pilgrims'.tr()}',
                           style: TextStyle(
                             fontFamily: 'Lexend',
                             fontWeight: FontWeight.w700,
@@ -991,8 +1011,8 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                         ? Center(
                             child: Text(
                               _searchQuery.isNotEmpty
-                                  ? 'No matches'
-                                  : 'No pilgrims yet',
+                                  ? 'group_no_matches'.tr()
+                                  : 'group_no_pilgrims'.tr(),
                               style: TextStyle(
                                 fontFamily: 'Lexend',
                                 color: AppColors.textMutedLight,
@@ -1030,7 +1050,7 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                                       ),
                                       SizedBox(height: 2.h),
                                       Text(
-                                        'Remove',
+                                        'group_remove_confirm'.tr(),
                                         style: TextStyle(
                                           color: Colors.white,
                                           fontSize: 10.sp,
@@ -1046,7 +1066,7 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                                   isSelected: _focusedPilgrimId == p.id,
                                   onTap: () => _focusPilgrim(p),
                                   onNavigate: () => _navigateToPilgrim(p),
-                                onCall: () => _showCallSheet(p),
+                                  onCall: () => _showCallSheet(p),
                                 ),
                               );
                             },
@@ -1098,7 +1118,7 @@ class _AddPilgrimChoiceSheet extends StatelessWidget {
           ),
           SizedBox(height: 20.h),
           Text(
-            'Add Pilgrim',
+            'group_add_pilgrim_how'.tr(),
             style: TextStyle(
               fontFamily: 'Lexend',
               fontWeight: FontWeight.w700,
@@ -1108,7 +1128,7 @@ class _AddPilgrimChoiceSheet extends StatelessWidget {
           ),
           SizedBox(height: 6.h),
           Text(
-            'How would you like to add a pilgrim?',
+            'group_add_pilgrim'.tr(),
             style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 13.sp,
@@ -1150,7 +1170,7 @@ class _AddPilgrimChoiceSheet extends StatelessWidget {
                         ),
                         SizedBox(height: 12.h),
                         Text(
-                          'Add Manually',
+                          'group_add_manually'.tr(),
                           style: TextStyle(
                             fontFamily: 'Lexend',
                             fontWeight: FontWeight.w700,
@@ -1160,7 +1180,7 @@ class _AddPilgrimChoiceSheet extends StatelessWidget {
                         ),
                         SizedBox(height: 4.h),
                         Text(
-                          'Search by email, phone or ID',
+                          'group_add_manually_sub'.tr(),
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontFamily: 'Lexend',
@@ -1206,7 +1226,7 @@ class _AddPilgrimChoiceSheet extends StatelessWidget {
                         ),
                         SizedBox(height: 12.h),
                         Text(
-                          'Share QR Code',
+                          'group_share_qr'.tr(),
                           style: TextStyle(
                             fontFamily: 'Lexend',
                             fontWeight: FontWeight.w700,
@@ -1216,7 +1236,7 @@ class _AddPilgrimChoiceSheet extends StatelessWidget {
                         ),
                         SizedBox(height: 4.h),
                         Text(
-                          'Pilgrim scans to join group',
+                          'group_scan_join_sub'.tr(),
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontFamily: 'Lexend',
@@ -1274,7 +1294,7 @@ class _QrShareSheetState extends State<_QrShareSheet> {
       } else {
         setState(() {
           _loading = false;
-          _error = 'QR not available';
+          _error = 'group_not_found'.tr();
         });
       }
     } on DioException catch (e) {
@@ -1311,7 +1331,7 @@ class _QrShareSheetState extends State<_QrShareSheet> {
           ),
           SizedBox(height: 20.h),
           Text(
-            'Scan to Join',
+            'group_scan_join'.tr(),
             style: TextStyle(
               fontFamily: 'Lexend',
               fontWeight: FontWeight.w700,
@@ -1321,7 +1341,7 @@ class _QrShareSheetState extends State<_QrShareSheet> {
           ),
           SizedBox(height: 4.h),
           Text(
-            'Share this QR code with your pilgrims',
+            'group_scan_join_sub'.tr(),
             style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 12.sp,
@@ -1374,7 +1394,7 @@ class _QrShareSheetState extends State<_QrShareSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'GROUP CODE',
+                      'group_code_label'.tr(),
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 10.sp,
@@ -1403,7 +1423,7 @@ class _QrShareSheetState extends State<_QrShareSheet> {
                       ClipboardData(text: widget.group.groupCode),
                     );
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Group code copied!')),
+                      SnackBar(content: Text('group_code_copied'.tr())),
                     );
                   },
                   child: Container(
@@ -1505,7 +1525,7 @@ class _ModeratorManageSheet extends ConsumerWidget {
           ),
           SizedBox(height: 20.h),
           Text(
-            'Moderators',
+            'group_moderators'.tr(),
             style: TextStyle(
               fontFamily: 'Lexend',
               fontWeight: FontWeight.w700,
@@ -1516,7 +1536,7 @@ class _ModeratorManageSheet extends ConsumerWidget {
           if (!isCreator) ...[
             SizedBox(height: 4.h),
             Text(
-              'Only the group creator can add or remove moderators.',
+              'Only the group creator can add or remove moderators.'.tr(),
               style: TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 11.sp,
@@ -1597,8 +1617,8 @@ class _ModeratorManageSheet extends ConsumerWidget {
                             SnackBar(
                               content: Text(
                                 ok
-                                    ? '${mod.fullName} removed'
-                                    : err ?? 'Failed',
+                                    ? '${mod.fullName} ${'group_remove_confirm'.tr().toLowerCase()}'
+                                    : err ?? 'group_not_found'.tr(),
                               ),
                               backgroundColor: ok ? null : Colors.red,
                             ),
@@ -1637,7 +1657,7 @@ class _ModeratorManageSheet extends ConsumerWidget {
                   color: const Color(0xFF6C63FF),
                 ),
                 label: Text(
-                  'Invite Co-Moderator',
+                  'group_invite_mod'.tr(),
                   style: TextStyle(
                     fontFamily: 'Lexend',
                     fontWeight: FontWeight.w600,
@@ -1678,7 +1698,7 @@ class _ModeratorManageSheet extends ConsumerWidget {
           Future<void> submit() async {
             final val = ctrl.text.trim();
             if (val.isEmpty || !val.contains('@')) {
-              setSheetState(() => fieldError = 'Enter a valid email');
+              setSheetState(() => fieldError = 'group_invite_send'.tr());
               return;
             }
             setSheetState(() {
@@ -1692,14 +1712,12 @@ class _ModeratorManageSheet extends ConsumerWidget {
               if (ok) {
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Invitation sent! They'll receive an email."),
-                  ),
+                  SnackBar(content: Text('group_invite_send'.tr())),
                 );
               } else {
                 setSheetState(() {
                   loading = false;
-                  fieldError = err ?? 'Failed';
+                  fieldError = err ?? 'group_not_found'.tr();
                 });
               }
             }
@@ -1731,7 +1749,7 @@ class _ModeratorManageSheet extends ConsumerWidget {
                   ),
                   SizedBox(height: 20.h),
                   Text(
-                    'Invite Co-Moderator',
+                    'group_invite_mod'.tr(),
                     style: TextStyle(
                       fontFamily: 'Lexend',
                       fontWeight: FontWeight.w700,
@@ -1741,7 +1759,7 @@ class _ModeratorManageSheet extends ConsumerWidget {
                   ),
                   SizedBox(height: 4.h),
                   Text(
-                    'An invitation email will be sent to them',
+                    'group_invite_mod_sub'.tr(),
                     style: TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 12.sp,
@@ -1759,7 +1777,7 @@ class _ModeratorManageSheet extends ConsumerWidget {
                       color: AppColors.textDark,
                     ),
                     decoration: InputDecoration(
-                      hintText: 'moderator@email.com',
+                      hintText: 'group_invite_mod'.tr().toLowerCase(),
                       hintStyle: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 13.sp,
@@ -1815,7 +1833,7 @@ class _ModeratorManageSheet extends ConsumerWidget {
                               ),
                             )
                           : Text(
-                              'Send Invitation',
+                              'group_invite_send'.tr(),
                               style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontWeight: FontWeight.w600,

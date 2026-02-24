@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:intl/intl.dart';
 
@@ -47,18 +48,17 @@ class _AlertsTabState extends ConsumerState<AlertsTab> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Alerts',
+                        'alerts_title'.tr(),
                         style: TextStyle(
                           fontFamily: 'Lexend',
                           fontWeight: FontWeight.w700,
                           fontSize: 24.sp,
-                          color:
-                              isDark ? Colors.white : AppColors.textDark,
+                          color: isDark ? Colors.white : AppColors.textDark,
                         ),
                       ),
                       SizedBox(height: 2.h),
                       Text(
-                        'Your recent notifications',
+                        'alerts_subtitle'.tr(),
                         style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 13.sp,
@@ -73,7 +73,7 @@ class _AlertsTabState extends ConsumerState<AlertsTab> {
                     onPressed: () =>
                         ref.read(notificationProvider.notifier).clearRead(),
                     child: Text(
-                      'Clear read',
+                      'alerts_clear_read'.tr(),
                       style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 12.sp,
@@ -92,39 +92,36 @@ class _AlertsTabState extends ConsumerState<AlertsTab> {
           Expanded(
             child: state.isLoading
                 ? const Center(
-                    child: CircularProgressIndicator(
-                      color: AppColors.primary,
-                    ),
+                    child: CircularProgressIndicator(color: AppColors.primary),
                   )
                 : state.error != null
-                    ? _ErrorView(
-                        error: state.error!,
-                        onRetry: () =>
-                            ref.read(notificationProvider.notifier).fetch(),
-                      )
-                    : state.notifications.isEmpty
-                        ? const _EmptyView()
-                        : RefreshIndicator(
-                            color: AppColors.primary,
-                            onRefresh: () =>
-                                ref.read(notificationProvider.notifier).fetch(),
-                            child: ListView.separated(
-                              padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 100.h),
-                              itemCount: state.notifications.length,
-                              separatorBuilder: (_, __) =>
-                                  SizedBox(height: 8.h),
-                              itemBuilder: (ctx, i) {
-                                final n = state.notifications[i];
-                                return _NotificationTile(
-                                  notification: n,
-                                  isDark: isDark,
-                                  onDelete: () => ref
-                                      .read(notificationProvider.notifier)
-                                      .delete(n.id),
-                                );
-                              },
-                            ),
-                          ),
+                ? _ErrorView(
+                    error: state.error!,
+                    onRetry: () =>
+                        ref.read(notificationProvider.notifier).fetch(),
+                  )
+                : state.notifications.isEmpty
+                ? const _EmptyView()
+                : RefreshIndicator(
+                    color: AppColors.primary,
+                    onRefresh: () =>
+                        ref.read(notificationProvider.notifier).fetch(),
+                    child: ListView.separated(
+                      padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 100.h),
+                      itemCount: state.notifications.length,
+                      separatorBuilder: (_, _) => SizedBox(height: 8.h),
+                      itemBuilder: (ctx, i) {
+                        final n = state.notifications[i];
+                        return _NotificationTile(
+                          notification: n,
+                          isDark: isDark,
+                          onDelete: () => ref
+                              .read(notificationProvider.notifier)
+                              .delete(n.id),
+                        );
+                      },
+                    ),
+                  ),
           ),
         ],
       ),
@@ -171,12 +168,7 @@ class _NotificationTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(16.r),
           border: n.read
               ? null
-              : Border(
-                  left: BorderSide(
-                    color: n.iconColor,
-                    width: 3,
-                  ),
-                ),
+              : Border(left: BorderSide(color: n.iconColor, width: 3)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
@@ -217,9 +209,7 @@ class _NotificationTile extends StatelessWidget {
                                   ? FontWeight.w500
                                   : FontWeight.w700,
                               fontSize: 13.sp,
-                              color: isDark
-                                  ? Colors.white
-                                  : AppColors.textDark,
+                              color: isDark ? Colors.white : AppColors.textDark,
                             ),
                           ),
                         ),
@@ -250,7 +240,9 @@ class _NotificationTile extends StatelessWidget {
                     // Type badge
                     Container(
                       padding: EdgeInsets.symmetric(
-                          horizontal: 8.w, vertical: 2.h),
+                        horizontal: 8.w,
+                        vertical: 2.h,
+                      ),
                       decoration: BoxDecoration(
                         color: n.iconColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(4.r),
@@ -291,7 +283,7 @@ class _NotificationTile extends StatelessWidget {
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final diff = now.difference(date);
-    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 1) return 'alerts_just_now'.tr();
     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     if (diff.inDays < 7) return '${diff.inDays}d ago';
@@ -319,7 +311,7 @@ class _EmptyView extends StatelessWidget {
           ),
           SizedBox(height: 12.h),
           Text(
-            'No notifications yet',
+            'alerts_empty'.tr(),
             style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 16.sp,
@@ -329,7 +321,7 @@ class _EmptyView extends StatelessWidget {
           ),
           SizedBox(height: 4.h),
           Text(
-            "You're all caught up!",
+            "alerts_all_caught_up".tr(),
             style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 13.sp,
@@ -353,11 +345,7 @@ class _ErrorView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Symbols.error_outline,
-            size: 48.w,
-            color: Colors.red.shade400,
-          ),
+          Icon(Symbols.error_outline, size: 48.w, color: Colors.red.shade400),
           SizedBox(height: 12.h),
           Text(
             error,
@@ -372,7 +360,7 @@ class _ErrorView extends StatelessWidget {
           ElevatedButton.icon(
             onPressed: onRetry,
             icon: const Icon(Symbols.refresh),
-            label: const Text('Retry'),
+            label: Text('alerts_retry'.tr()),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,

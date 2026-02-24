@@ -189,6 +189,7 @@ class ModeratorState {
   ModeratorState copyWith({
     bool? isLoading,
     String? error,
+    bool clearError = false,
     List<ModeratorGroup>? groups,
     int? selectedGroupIndex,
     bool? showSosOnly,
@@ -196,7 +197,7 @@ class ModeratorState {
     bool? isBroadcastingSOS,
   }) => ModeratorState(
     isLoading: isLoading ?? this.isLoading,
-    error: error ?? this.error,
+    error: clearError ? null : (error ?? this.error),
     groups: groups ?? this.groups,
     selectedGroupIndex: selectedGroupIndex ?? this.selectedGroupIndex,
     showSosOnly: showSosOnly ?? this.showSosOnly,
@@ -231,14 +232,18 @@ class ModeratorNotifier extends Notifier<ModeratorState> {
 
   // Load all groups + their pilgrims
   Future<void> loadDashboard() async {
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true, clearError: true);
     try {
       final resp = await ApiService.dio.get('/groups/dashboard');
       final data = resp.data['data'] as List<dynamic>? ?? [];
       final groups = data
           .map((g) => ModeratorGroup.fromJson(g as Map<String, dynamic>))
           .toList();
-      state = state.copyWith(isLoading: false, groups: groups);
+      state = state.copyWith(
+        isLoading: false,
+        groups: groups,
+        clearError: true,
+      );
     } on DioException catch (e) {
       state = state.copyWith(isLoading: false, error: ApiService.parseError(e));
     } catch (e) {

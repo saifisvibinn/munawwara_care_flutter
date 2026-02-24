@@ -207,7 +207,7 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
             )
           : const _PlaceholderTab(
               icon: Symbols.chat_bubble,
-              label: 'No group yet',
+              label: 'pilgrim_no_group',
             ),
       _PlaceholderTab(icon: Symbols.person, label: 'tab_me'.tr()),
     ];
@@ -310,8 +310,8 @@ class _HomeTab extends StatelessWidget {
                           ),
                           Text(
                             pilgrimState.isLoading
-                                ? 'Pilgrim ID: ...'
-                                : 'Pilgrim ID: ${profile?.displayId ?? '------'}',
+                                ? '${'pilgrim_id_prefix'.tr()} ...'
+                                : '${'pilgrim_id_prefix'.tr()} ${profile?.displayId ?? '------'}',
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 12.sp,
@@ -559,7 +559,7 @@ class _SosButton extends StatelessWidget {
             // Pulse glow
             AnimatedBuilder(
               animation: pulseController,
-              builder: (_, __) {
+              builder: (_, _) {
                 final scale = 1.0 + 0.15 * pulseController.value;
                 return Transform.scale(
                   scale: scale,
@@ -635,7 +635,7 @@ class _SosButton extends StatelessWidget {
             if (isHolding)
               AnimatedBuilder(
                 animation: holdController,
-                builder: (_, __) => SizedBox(
+                builder: (_, _) => SizedBox(
                   width: size.w,
                   height: size.w,
                   child: CircularProgressIndicator(
@@ -1089,7 +1089,7 @@ class _PilgrimMapTab extends StatelessWidget {
                   ),
                   SizedBox(height: 8.h),
                   Text(
-                    'Locating you...',
+                    'pilgrim_locating'.tr(),
                     style: TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 14.sp,
@@ -1124,7 +1124,7 @@ class _PlaceholderTab extends StatelessWidget {
           Icon(icon, size: 48, color: AppColors.textMutedLight),
           const SizedBox(height: 12),
           Text(
-            label,
+            label.tr(),
             style: const TextStyle(
               fontFamily: 'Lexend',
               fontSize: 16,
@@ -1133,7 +1133,7 @@ class _PlaceholderTab extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Coming soon',
+            'pilgrim_coming_soon'.tr(),
             style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 13,

@@ -19,7 +19,9 @@ class SocketService {
     // Don't reconnect if already live for the same user
     if (_socket != null &&
         _socket!.connected &&
-        _connectedUserId == userId) return;
+        _connectedUserId == userId) {
+      return;
+    }
 
     _socket?.disconnect();
     _connectedUserId = userId;

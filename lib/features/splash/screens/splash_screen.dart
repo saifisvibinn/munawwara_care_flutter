@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -170,7 +171,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 Padding(
                   padding: EdgeInsets.symmetric(horizontal: 40.w),
                   child: Text(
-                    'Serving the Guests of Rahman with excellence and ease.',
+                    'splash_tagline'.tr(),
                     textAlign: TextAlign.center,
                     style: GoogleFonts.lexend(
                       fontSize: 14.sp,
@@ -190,7 +191,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'VERSION 1.0.0',
+                      'splash_version'.tr().toUpperCase(),
                       style: GoogleFonts.lexend(
                         fontSize: 10.sp,
                         fontWeight: FontWeight.w600,

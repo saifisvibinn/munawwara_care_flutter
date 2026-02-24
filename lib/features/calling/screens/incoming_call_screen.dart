@@ -1,3 +1,4 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -18,8 +19,7 @@ class IncomingCallScreen extends ConsumerStatefulWidget {
   const IncomingCallScreen({super.key});
 
   @override
-  ConsumerState<IncomingCallScreen> createState() =>
-      _IncomingCallScreenState();
+  ConsumerState<IncomingCallScreen> createState() => _IncomingCallScreenState();
 }
 
 class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
@@ -47,8 +47,7 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
 
     // If the caller cancels or the call ends before we accept, pop this screen
     ref.listen(callProvider, (_, next) {
-      if ((next.status == CallStatus.idle ||
-              next.status == CallStatus.ended) &&
+      if ((next.status == CallStatus.idle || next.status == CallStatus.ended) &&
           mounted) {
         Navigator.of(context).maybePop();
       }
@@ -71,7 +70,7 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
 
             // ── Incoming call label ────────────────────────────────────────
             Text(
-              'INCOMING INTERNET CALL',
+              'call_incoming'.tr().toUpperCase(),
               style: TextStyle(
                 color: Colors.white38,
                 fontSize: 11.sp,
@@ -137,7 +136,7 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
             SizedBox(height: 8.h),
 
             Text(
-              'Voice call',
+              'call_voice'.tr(),
               style: TextStyle(
                 fontSize: 14.sp,
                 fontFamily: 'Lexend',
@@ -154,17 +153,17 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
                 // ── Decline ────────────────────────────────────────────────
                 _CallButton(
                   icon: Symbols.call_end,
-                  label: 'Decline',
+                  label: 'call_decline'.tr(),
                   color: const Color(0xFFDC2626),
                   onTap: () => ref.read(callProvider.notifier).declineCall(),
                 ),
 
                 SizedBox(width: 60.w),
 
-                // ── Accept ─────────────────────────────────────────────────
+                // ── Accept ──────────────────────────────────────────────────────────────
                 _CallButton(
                   icon: Symbols.call,
-                  label: 'Accept',
+                  label: 'call_accept'.tr(),
                   color: const Color(0xFF16A34A),
                   onTap: () async {
                     await ref.read(callProvider.notifier).acceptCall();
