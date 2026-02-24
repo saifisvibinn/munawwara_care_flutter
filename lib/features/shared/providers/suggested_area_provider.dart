@@ -1,4 +1,5 @@
-import 'package:dio/dio.dart';\nimport 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/api_service.dart';
 import '../models/suggested_area_model.dart';
@@ -22,12 +23,11 @@ class SuggestedAreaState {
     List<SuggestedArea>? areas,
     bool? isLoading,
     String? error,
-  }) =>
-      SuggestedAreaState(
-        areas: areas ?? this.areas,
-        isLoading: isLoading ?? this.isLoading,
-        error: error,
-      );
+  }) => SuggestedAreaState(
+    areas: areas ?? this.areas,
+    isLoading: isLoading ?? this.isLoading,
+    error: error,
+  );
 
   List<SuggestedArea> get suggestions =>
       areas.where((a) => !a.isMeetpoint).toList();
@@ -56,17 +56,13 @@ class SuggestedAreaNotifier extends Notifier<SuggestedAreaState> {
   Future<void> load(String groupId) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final res =
-          await ApiService.dio.get('/groups/$groupId/suggested-areas');
+      final res = await ApiService.dio.get('/groups/$groupId/suggested-areas');
       final raw = (res.data['areas'] as List<dynamic>)
           .map((j) => SuggestedArea.fromJson(j as Map<String, dynamic>))
           .toList();
       state = state.copyWith(areas: raw, isLoading: false);
     } on DioException catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: ApiService.parseError(e),
-      );
+      state = state.copyWith(isLoading: false, error: ApiService.parseError(e));
     } catch (_) {
       state = state.copyWith(isLoading: false, error: 'Something went wrong');
     }
@@ -93,8 +89,9 @@ class SuggestedAreaNotifier extends Notifier<SuggestedAreaState> {
           'area_type': areaType,
         },
       );
-      final area =
-          SuggestedArea.fromJson(res.data['area'] as Map<String, dynamic>);
+      final area = SuggestedArea.fromJson(
+        res.data['area'] as Map<String, dynamic>,
+      );
       state = state.copyWith(areas: [area, ...state.areas]);
       return (true, null);
     } on DioException catch (e) {
@@ -108,8 +105,7 @@ class SuggestedAreaNotifier extends Notifier<SuggestedAreaState> {
 
   Future<bool> deleteArea(String groupId, String areaId) async {
     try {
-      await ApiService.dio
-          .delete('/groups/$groupId/suggested-areas/$areaId');
+      await ApiService.dio.delete('/groups/$groupId/suggested-areas/$areaId');
       state = state.copyWith(
         areas: state.areas.where((a) => a.id != areaId).toList(),
       );
@@ -142,5 +138,5 @@ class SuggestedAreaNotifier extends Notifier<SuggestedAreaState> {
 
 final suggestedAreaProvider =
     NotifierProvider<SuggestedAreaNotifier, SuggestedAreaState>(
-  SuggestedAreaNotifier.new,
-);
+      SuggestedAreaNotifier.new,
+    );

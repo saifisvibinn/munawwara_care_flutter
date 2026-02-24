@@ -30,7 +30,8 @@ class GroupMessage {
   final String? originalText; // TTS source text
   final bool isUrgent;
   final int duration; // seconds (voice)
-  final Map<String, dynamic>? meetpointData; // { area_id, name, latitude, longitude }
+  final Map<String, dynamic>?
+  meetpointData; // { area_id, name, latitude, longitude }
   final DateTime createdAt;
 
   const GroupMessage({

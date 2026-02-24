@@ -73,7 +73,9 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
     // Real-time area sync
     SocketService.on('area_added', (data) {
       if (!mounted) return;
-      ref.read(suggestedAreaProvider.notifier).appendArea(data as Map<String, dynamic>);
+      ref
+          .read(suggestedAreaProvider.notifier)
+          .appendArea(data as Map<String, dynamic>);
     });
     SocketService.on('area_deleted', (data) {
       if (!mounted) return;
@@ -755,22 +757,43 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                       _openAreaPicker(group, 'suggestion');
                     },
                     child: Container(
-                      padding: EdgeInsets.symmetric(vertical: 20.h, horizontal: 12.w),
+                      padding: EdgeInsets.symmetric(
+                        vertical: 20.h,
+                        horizontal: 12.w,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withOpacity(0.08),
                         borderRadius: BorderRadius.circular(16.r),
-                        border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                        border: Border.all(
+                          color: AppColors.primary.withOpacity(0.3),
+                        ),
                       ),
                       child: Column(
                         children: [
                           Container(
-                            width: 52.w, height: 52.w,
-                            decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                            child: Icon(Symbols.add_location, color: Colors.white, size: 26.w),
+                            width: 52.w,
+                            height: 52.w,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Symbols.add_location,
+                              color: Colors.white,
+                              size: 26.w,
+                            ),
                           ),
                           SizedBox(height: 12.h),
-                          Text('area_suggest'.tr(), textAlign: TextAlign.center,
-                            style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 13.sp, color: AppColors.textDark)),
+                          Text(
+                            'area_suggest'.tr(),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13.sp,
+                              color: AppColors.textDark,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -787,7 +810,9 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                             content: Text('area_meetpoint_exists'.tr()),
                             backgroundColor: Colors.orange.shade700,
                             behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
                           ),
                         );
                         return;
@@ -795,7 +820,10 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                       _openAreaPicker(group, 'meetpoint');
                     },
                     child: Container(
-                      padding: EdgeInsets.symmetric(vertical: 20.h, horizontal: 12.w),
+                      padding: EdgeInsets.symmetric(
+                        vertical: 20.h,
+                        horizontal: 12.w,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFEF2F2),
                         borderRadius: BorderRadius.circular(16.r),
@@ -804,13 +832,29 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                       child: Column(
                         children: [
                           Container(
-                            width: 52.w, height: 52.w,
-                            decoration: const BoxDecoration(color: Color(0xFFDC2626), shape: BoxShape.circle),
-                            child: Icon(Symbols.crisis_alert, color: Colors.white, size: 26.w),
+                            width: 52.w,
+                            height: 52.w,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFDC2626),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Symbols.crisis_alert,
+                              color: Colors.white,
+                              size: 26.w,
+                            ),
                           ),
                           SizedBox(height: 12.h),
-                          Text('area_meetpoint'.tr(), textAlign: TextAlign.center,
-                            style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 13.sp, color: AppColors.textDark)),
+                          Text(
+                            'area_meetpoint'.tr(),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13.sp,
+                              color: AppColors.textDark,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -841,13 +885,32 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                       SizedBox(width: 8.w),
                       Text(
                         'area_view_all'.tr(),
-                        style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600, fontSize: 14.sp, color: AppColors.textDark),
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14.sp,
+                          color: AppColors.textDark,
+                        ),
                       ),
                       SizedBox(width: 6.w),
                       Container(
-                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
-                        decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.15), borderRadius: BorderRadius.circular(10.r)),
-                        child: Text('${areaState.areas.length}', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 12.sp, color: AppColors.primary)),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8.w,
+                          vertical: 2.h,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10.r),
+                        ),
+                        child: Text(
+                          '${areaState.areas.length}',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12.sp,
+                            color: AppColors.primary,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -866,7 +929,9 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (ctx) => Container(
-        constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.65),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(ctx).size.height * 0.65,
+        ),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
@@ -875,9 +940,24 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(width: 40.w, height: 4.h, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2.r))),
+            Container(
+              width: 40.w,
+              height: 4.h,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2.r),
+              ),
+            ),
             SizedBox(height: 16.h),
-            Text('area_view_all'.tr(), style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 17.sp, color: AppColors.textDark)),
+            Text(
+              'area_view_all'.tr(),
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontWeight: FontWeight.w700,
+                fontSize: 17.sp,
+                color: AppColors.textDark,
+              ),
+            ),
             SizedBox(height: 16.h),
             Flexible(
               child: ListView.builder(
@@ -889,21 +969,33 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                     margin: EdgeInsets.only(bottom: 10.h),
                     padding: EdgeInsets.all(12.w),
                     decoration: BoxDecoration(
-                      color: area.isMeetpoint ? const Color(0xFFFEF2F2) : const Color(0xFFF6F8F7),
+                      color: area.isMeetpoint
+                          ? const Color(0xFFFEF2F2)
+                          : const Color(0xFFF6F8F7),
                       borderRadius: BorderRadius.circular(14.r),
-                      border: Border.all(color: area.isMeetpoint ? const Color(0xFFFECACA) : Colors.transparent),
+                      border: Border.all(
+                        color: area.isMeetpoint
+                            ? const Color(0xFFFECACA)
+                            : Colors.transparent,
+                      ),
                     ),
                     child: Row(
                       children: [
                         Container(
-                          width: 36.w, height: 36.w,
+                          width: 36.w,
+                          height: 36.w,
                           decoration: BoxDecoration(
-                            color: area.isMeetpoint ? const Color(0xFFDC2626) : AppColors.primary,
+                            color: area.isMeetpoint
+                                ? const Color(0xFFDC2626)
+                                : AppColors.primary,
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
-                            area.isMeetpoint ? Symbols.crisis_alert : Symbols.pin_drop,
-                            color: Colors.white, size: 18.w,
+                            area.isMeetpoint
+                                ? Symbols.crisis_alert
+                                : Symbols.pin_drop,
+                            color: Colors.white,
+                            size: 18.w,
                           ),
                         ),
                         SizedBox(width: 10.w),
@@ -914,27 +1006,59 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                               Row(
                                 children: [
                                   Flexible(
-                                    child: Text(area.name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600, fontSize: 13.sp, color: AppColors.textDark)),
+                                    child: Text(
+                                      area.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontFamily: 'Lexend',
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13.sp,
+                                        color: AppColors.textDark,
+                                      ),
+                                    ),
                                   ),
                                   SizedBox(width: 6.w),
                                   Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 6.w,
+                                      vertical: 2.h,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: area.isMeetpoint ? const Color(0xFFDC2626).withOpacity(0.15) : AppColors.primary.withOpacity(0.15),
+                                      color: area.isMeetpoint
+                                          ? const Color(
+                                              0xFFDC2626,
+                                            ).withOpacity(0.15)
+                                          : AppColors.primary.withOpacity(0.15),
                                       borderRadius: BorderRadius.circular(6.r),
                                     ),
                                     child: Text(
-                                      area.isMeetpoint ? 'area_meetpoint'.tr() : 'area_suggestion_label'.tr(),
-                                      style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600, fontSize: 9.sp,
-                                        color: area.isMeetpoint ? const Color(0xFFDC2626) : AppColors.primary),
+                                      area.isMeetpoint
+                                          ? 'area_meetpoint'.tr()
+                                          : 'area_suggestion_label'.tr(),
+                                      style: TextStyle(
+                                        fontFamily: 'Lexend',
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 9.sp,
+                                        color: area.isMeetpoint
+                                            ? const Color(0xFFDC2626)
+                                            : AppColors.primary,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
                               if (area.description.isNotEmpty)
-                                Text(area.description, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(fontFamily: 'Lexend', fontSize: 11.sp, color: AppColors.textMutedLight)),
+                                Text(
+                                  area.description,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontFamily: 'Lexend',
+                                    fontSize: 11.sp,
+                                    color: AppColors.textMutedLight,
+                                  ),
+                                ),
                             ],
                           ),
                         ),
@@ -942,33 +1066,59 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                         GestureDetector(
                           onTap: () {
                             Navigator.pop(ctx);
-                            _mapController.move(LatLng(area.latitude, area.longitude), 17);
+                            _mapController.move(
+                              LatLng(area.latitude, area.longitude),
+                              17,
+                            );
                           },
                           child: Container(
-                            width: 32.w, height: 32.w,
-                            decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), shape: BoxShape.circle),
-                            child: Icon(Symbols.my_location, size: 15.w, color: AppColors.primary),
+                            width: 32.w,
+                            height: 32.w,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Symbols.my_location,
+                              size: 15.w,
+                              color: AppColors.primary,
+                            ),
                           ),
                         ),
                         SizedBox(width: 6.w),
                         // Delete
                         GestureDetector(
                           onTap: () async {
-                            final ok = await ref.read(suggestedAreaProvider.notifier).deleteArea(group.id, area.id);
+                            final ok = await ref
+                                .read(suggestedAreaProvider.notifier)
+                                .deleteArea(group.id, area.id);
                             if (ok && ctx.mounted) {
                               Navigator.pop(ctx);
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('area_deleted'.tr()), behavior: SnackBarBehavior.floating,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r))),
+                                  SnackBar(
+                                    content: Text('area_deleted'.tr()),
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12.r),
+                                    ),
+                                  ),
                                 );
                               }
                             }
                           },
                           child: Container(
-                            width: 32.w, height: 32.w,
-                            decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), shape: BoxShape.circle),
-                            child: Icon(Symbols.delete, size: 15.w, color: Colors.red),
+                            width: 32.w,
+                            height: 32.w,
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Symbols.delete,
+                              size: 15.w,
+                              color: Colors.red,
+                            ),
                           ),
                         ),
                       ],
@@ -2563,7 +2713,9 @@ class _AreaMapMarker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = area.isMeetpoint ? const Color(0xFFDC2626) : AppColors.primary;
+    final color = area.isMeetpoint
+        ? const Color(0xFFDC2626)
+        : AppColors.primary;
     final icon = area.isMeetpoint ? Symbols.crisis_alert : Symbols.pin_drop;
 
     return Column(
@@ -2574,7 +2726,13 @@ class _AreaMapMarker extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(10.r),
-            boxShadow: [BoxShadow(color: color.withOpacity(0.35), blurRadius: 8, spreadRadius: 1)],
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.35),
+                blurRadius: 8,
+                spreadRadius: 1,
+              ),
+            ],
             border: Border.all(color: color, width: 1.5),
           ),
           child: Row(
@@ -2588,7 +2746,12 @@ class _AreaMapMarker extends StatelessWidget {
                   area.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 9.sp, color: color),
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 9.sp,
+                    color: color,
+                  ),
                 ),
               ),
             ],
@@ -2604,7 +2767,13 @@ class _AreaMapMarker extends StatelessWidget {
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
-            boxShadow: [BoxShadow(color: color.withOpacity(0.5), blurRadius: 6, spreadRadius: 2)],
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.5),
+                blurRadius: 6,
+                spreadRadius: 2,
+              ),
+            ],
           ),
         ),
       ],
@@ -2620,7 +2789,11 @@ class _AreaPickerScreen extends ConsumerStatefulWidget {
   final String groupId;
   final String areaType;
   final LatLng? initialCenter;
-  const _AreaPickerScreen({required this.groupId, required this.areaType, this.initialCenter});
+  const _AreaPickerScreen({
+    required this.groupId,
+    required this.areaType,
+    this.initialCenter,
+  });
 
   @override
   ConsumerState<_AreaPickerScreen> createState() => _AreaPickerScreenState();
@@ -2657,7 +2830,10 @@ class _AreaPickerScreenState extends ConsumerState<_AreaPickerScreen> {
       setState(() => _searchResults = []);
       return;
     }
-    _debounce = Timer(const Duration(milliseconds: 500), () => _searchPlaces(query.trim()));
+    _debounce = Timer(
+      const Duration(milliseconds: 500),
+      () => _searchPlaces(query.trim()),
+    );
   }
 
   Future<void> _searchPlaces(String query) async {
@@ -2670,17 +2846,22 @@ class _AreaPickerScreenState extends ConsumerState<_AreaPickerScreen> {
           'q': query,
           'format': 'json',
           'limit': '6',
-          'viewbox': '39.7,21.5,39.95,21.3', // Makkah bounding box (approximate)
+          'viewbox':
+              '39.7,21.5,39.95,21.3', // Makkah bounding box (approximate)
           'bounded': '0',
         },
         options: Options(headers: {'User-Agent': 'FlutterMunawwara/1.0'}),
       );
       if (!mounted) return;
-      final list = (resp.data as List).map<Map<String, dynamic>>((e) => {
-        'display_name': e['display_name'] as String,
-        'lat': double.parse(e['lat'] as String),
-        'lon': double.parse(e['lon'] as String),
-      }).toList();
+      final list = (resp.data as List)
+          .map<Map<String, dynamic>>(
+            (e) => {
+              'display_name': e['display_name'] as String,
+              'lat': double.parse(e['lat'] as String),
+              'lon': double.parse(e['lon'] as String),
+            },
+          )
+          .toList();
       setState(() => _searchResults = list);
     } catch (_) {
       // ignore errors
@@ -2709,23 +2890,35 @@ class _AreaPickerScreenState extends ConsumerState<_AreaPickerScreen> {
     final name = _nameController.text.trim();
     if (name.isEmpty || _pickedPoint == null) return;
     setState(() => _submitting = true);
-    final (success, errorMsg) = await ref.read(suggestedAreaProvider.notifier).addArea(
-      groupId: widget.groupId,
-      name: name,
-      description: _descController.text.trim(),
-      latitude: _pickedPoint!.latitude,
-      longitude: _pickedPoint!.longitude,
-      areaType: widget.areaType,
-    );
+    final (success, errorMsg) = await ref
+        .read(suggestedAreaProvider.notifier)
+        .addArea(
+          groupId: widget.groupId,
+          name: name,
+          description: _descController.text.trim(),
+          latitude: _pickedPoint!.latitude,
+          longitude: _pickedPoint!.longitude,
+          areaType: widget.areaType,
+        );
     if (!mounted) return;
     setState(() => _submitting = false);
     if (success) {
       Navigator.pop(context);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMsg ?? (widget.areaType == 'meetpoint' ? 'area_meetpoint_exists'.tr() : 'error_generic'.tr())),
-            backgroundColor: Colors.red, behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r))),
+        SnackBar(
+          content: Text(
+            errorMsg ??
+                (widget.areaType == 'meetpoint'
+                    ? 'area_meetpoint_exists'.tr()
+                    : 'error_generic'.tr()),
+          ),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.r),
+          ),
+        ),
       );
     }
   }
@@ -2733,18 +2926,29 @@ class _AreaPickerScreenState extends ConsumerState<_AreaPickerScreen> {
   @override
   Widget build(BuildContext context) {
     final isMeetpoint = widget.areaType == 'meetpoint';
-    final accentColor = isMeetpoint ? const Color(0xFFDC2626) : AppColors.primary;
-    final center = _pickedPoint ?? widget.initialCenter ?? const LatLng(21.4225, 39.8262);
+    final accentColor = isMeetpoint
+        ? const Color(0xFFDC2626)
+        : AppColors.primary;
+    final center =
+        _pickedPoint ?? widget.initialCenter ?? const LatLng(21.4225, 39.8262);
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(icon: Icon(Symbols.arrow_back, color: AppColors.textDark), onPressed: () => Navigator.pop(context)),
+        leading: IconButton(
+          icon: Icon(Symbols.arrow_back, color: AppColors.textDark),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: Text(
           isMeetpoint ? 'area_meetpoint'.tr() : 'area_suggest'.tr(),
-          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 17.sp, color: AppColors.textDark),
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontWeight: FontWeight.w700,
+            fontSize: 17.sp,
+            color: AppColors.textDark,
+          ),
         ),
         centerTitle: true,
       ),
@@ -2759,14 +2963,35 @@ class _AreaPickerScreenState extends ConsumerState<_AreaPickerScreen> {
               style: TextStyle(fontFamily: 'Lexend', fontSize: 13.sp),
               decoration: InputDecoration(
                 hintText: 'area_search_hint'.tr(),
-                hintStyle: TextStyle(fontFamily: 'Lexend', fontSize: 13.sp, color: AppColors.textMutedLight),
-                prefixIcon: Icon(Symbols.search, size: 20.w, color: AppColors.textMutedLight),
+                hintStyle: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 13.sp,
+                  color: AppColors.textMutedLight,
+                ),
+                prefixIcon: Icon(
+                  Symbols.search,
+                  size: 20.w,
+                  color: AppColors.textMutedLight,
+                ),
                 suffixIcon: _searching
-                    ? Padding(padding: EdgeInsets.all(12.w), child: SizedBox(width: 16.w, height: 16.w, child: CircularProgressIndicator(strokeWidth: 2, color: accentColor)))
+                    ? Padding(
+                        padding: EdgeInsets.all(12.w),
+                        child: SizedBox(
+                          width: 16.w,
+                          height: 16.w,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: accentColor,
+                          ),
+                        ),
+                      )
                     : null,
                 filled: true,
                 fillColor: const Color(0xFFF6F8F7),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14.r), borderSide: BorderSide.none),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14.r),
+                  borderSide: BorderSide.none,
+                ),
                 contentPadding: EdgeInsets.symmetric(vertical: 12.h),
               ),
             ),
@@ -2780,19 +3005,37 @@ class _AreaPickerScreenState extends ConsumerState<_AreaPickerScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12.r),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12)],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 12,
+                  ),
+                ],
               ),
               child: ListView.separated(
                 shrinkWrap: true,
                 itemCount: _searchResults.length,
-                separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade200),
+                separatorBuilder: (_, __) =>
+                    Divider(height: 1, color: Colors.grey.shade200),
                 itemBuilder: (_, i) {
                   final r = _searchResults[i];
                   return ListTile(
                     dense: true,
-                    leading: Icon(Symbols.location_on, size: 18.w, color: accentColor),
-                    title: Text(r['display_name'] as String, maxLines: 2, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontFamily: 'Lexend', fontSize: 12.sp, color: AppColors.textDark)),
+                    leading: Icon(
+                      Symbols.location_on,
+                      size: 18.w,
+                      color: accentColor,
+                    ),
+                    title: Text(
+                      r['display_name'] as String,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12.sp,
+                        color: AppColors.textDark,
+                      ),
+                    ),
                     onTap: () => _selectSearchResult(r),
                   );
                 },
@@ -2817,7 +3060,10 @@ class _AreaPickerScreenState extends ConsumerState<_AreaPickerScreen> {
                       },
                     ),
                     children: [
-                      TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'),
+                      TileLayer(
+                        urlTemplate:
+                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      ),
                       if (_pickedPoint != null)
                         MarkerLayer(
                           markers: [
@@ -2825,7 +3071,12 @@ class _AreaPickerScreenState extends ConsumerState<_AreaPickerScreen> {
                               point: _pickedPoint!,
                               width: 48.w,
                               height: 48.w,
-                              child: Icon(Symbols.location_on, size: 42.w, color: accentColor, fill: 1),
+                              child: Icon(
+                                Symbols.location_on,
+                                size: 42.w,
+                                color: accentColor,
+                                fill: 1,
+                              ),
                             ),
                           ],
                         ),
@@ -2846,11 +3097,22 @@ class _AreaPickerScreenState extends ConsumerState<_AreaPickerScreen> {
                   style: TextStyle(fontFamily: 'Lexend', fontSize: 13.sp),
                   decoration: InputDecoration(
                     hintText: 'area_name_hint'.tr(),
-                    hintStyle: TextStyle(fontFamily: 'Lexend', fontSize: 13.sp, color: AppColors.textMutedLight),
-                    prefixIcon: Icon(isMeetpoint ? Symbols.crisis_alert : Symbols.pin_drop, size: 18.w, color: accentColor),
+                    hintStyle: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 13.sp,
+                      color: AppColors.textMutedLight,
+                    ),
+                    prefixIcon: Icon(
+                      isMeetpoint ? Symbols.crisis_alert : Symbols.pin_drop,
+                      size: 18.w,
+                      color: accentColor,
+                    ),
                     filled: true,
                     fillColor: const Color(0xFFF6F8F7),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14.r), borderSide: BorderSide.none),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14.r),
+                      borderSide: BorderSide.none,
+                    ),
                     contentPadding: EdgeInsets.symmetric(vertical: 12.h),
                   ),
                 ),
@@ -2861,11 +3123,22 @@ class _AreaPickerScreenState extends ConsumerState<_AreaPickerScreen> {
                   maxLines: 1,
                   decoration: InputDecoration(
                     hintText: 'area_desc_hint'.tr(),
-                    hintStyle: TextStyle(fontFamily: 'Lexend', fontSize: 13.sp, color: AppColors.textMutedLight),
-                    prefixIcon: Icon(Symbols.description, size: 18.w, color: AppColors.textMutedLight),
+                    hintStyle: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 13.sp,
+                      color: AppColors.textMutedLight,
+                    ),
+                    prefixIcon: Icon(
+                      Symbols.description,
+                      size: 18.w,
+                      color: AppColors.textMutedLight,
+                    ),
                     filled: true,
                     fillColor: const Color(0xFFF6F8F7),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14.r), borderSide: BorderSide.none),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14.r),
+                      borderSide: BorderSide.none,
+                    ),
                     contentPadding: EdgeInsets.symmetric(vertical: 12.h),
                   ),
                 ),
@@ -2875,23 +3148,46 @@ class _AreaPickerScreenState extends ConsumerState<_AreaPickerScreen> {
 
           // ── Submit button ──────────────────────────────────────────────
           Padding(
-            padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, MediaQuery.of(context).padding.bottom + 16.h),
+            padding: EdgeInsets.fromLTRB(
+              16.w,
+              4.h,
+              16.w,
+              MediaQuery.of(context).padding.bottom + 16.h,
+            ),
             child: SizedBox(
               width: double.infinity,
               height: 50.h,
               child: ElevatedButton(
-                onPressed: (_pickedPoint == null || _submitting) ? null : _submit,
+                onPressed: (_pickedPoint == null || _submitting)
+                    ? null
+                    : _submit,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: accentColor,
                   disabledBackgroundColor: accentColor.withOpacity(0.35),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16.r),
+                  ),
                   elevation: 0,
                 ),
                 child: _submitting
-                    ? SizedBox(width: 22.w, height: 22.w, child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                    ? SizedBox(
+                        width: 22.w,
+                        height: 22.w,
+                        child: const CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.5,
+                        ),
+                      )
                     : Text(
-                        isMeetpoint ? 'area_set_meetpoint'.tr() : 'area_add_suggestion'.tr(),
-                        style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 15.sp, color: Colors.white),
+                        isMeetpoint
+                            ? 'area_set_meetpoint'.tr()
+                            : 'area_add_suggestion'.tr(),
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15.sp,
+                          color: Colors.white,
+                        ),
                       ),
               ),
             ),

@@ -44,8 +44,10 @@ class SuggestedArea {
       areaType: j['area_type']?.toString() ?? 'suggestion',
       latitude: (j['latitude'] as num?)?.toDouble() ?? 0,
       longitude: (j['longitude'] as num?)?.toDouble() ?? 0,
-      createdAt: DateTime.tryParse(
-              (j['createdAt'] ?? j['created_at'] ?? '').toString()) ??
+      createdAt:
+          DateTime.tryParse(
+            (j['createdAt'] ?? j['created_at'] ?? '').toString(),
+          ) ??
           DateTime.now(),
     );
   }

@@ -660,9 +660,17 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
           Row(
             children: [
               Container(
-                width: 34.w, height: 34.w,
-                decoration: const BoxDecoration(color: Color(0xFFDC2626), shape: BoxShape.circle),
-                child: Icon(Symbols.crisis_alert, color: Colors.white, size: 18.w),
+                width: 34.w,
+                height: 34.w,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFDC2626),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Symbols.crisis_alert,
+                  color: Colors.white,
+                  size: 18.w,
+                ),
               ),
               SizedBox(width: 10.w),
               Expanded(
@@ -672,7 +680,9 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
                     Text(
                       'area_meetpoint'.tr(),
                       style: TextStyle(
-                        fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 10.sp,
+                        fontFamily: 'Lexend',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 10.sp,
                         color: const Color(0xFFDC2626),
                       ),
                     ),
@@ -680,7 +690,9 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
                     Text(
                       name,
                       style: TextStyle(
-                        fontFamily: 'Lexend', fontWeight: FontWeight.w600, fontSize: 14.sp,
+                        fontFamily: 'Lexend',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14.sp,
                         color: isDark ? Colors.white : AppColors.textDark,
                       ),
                     ),
@@ -689,12 +701,18 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
               ),
             ],
           ),
-          if (msg.content != null && msg.content!.isNotEmpty && msg.content != name) ...[
+          if (msg.content != null &&
+              msg.content!.isNotEmpty &&
+              msg.content != name) ...[
             SizedBox(height: 8.h),
             Text(
               msg.content!,
-              style: TextStyle(fontFamily: 'Lexend', fontSize: 13.sp, height: 1.4,
-                color: isDark ? Colors.white70 : AppColors.textDark),
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 13.sp,
+                height: 1.4,
+                color: isDark ? Colors.white70 : AppColors.textDark,
+              ),
             ),
           ],
           if (lat != null && lng != null) ...[
@@ -702,7 +720,8 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
             GestureDetector(
               onTap: () {
                 final url = Uri.parse(
-                    'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+                  'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng',
+                );
                 launchUrl(url, mode: LaunchMode.externalApplication);
               },
               child: Container(
@@ -715,11 +734,21 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Symbols.navigation, size: 16.w, color: Colors.white, fill: 1),
+                    Icon(
+                      Symbols.navigation,
+                      size: 16.w,
+                      color: Colors.white,
+                      fill: 1,
+                    ),
                     SizedBox(width: 6.w),
                     Text(
                       'area_navigate'.tr(),
-                      style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 13.sp, color: Colors.white),
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13.sp,
+                        color: Colors.white,
+                      ),
                     ),
                   ],
                 ),

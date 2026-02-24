@@ -4,6 +4,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../models/notification_model.dart';
@@ -258,6 +259,44 @@ class _NotificationTile extends StatelessWidget {
                         ),
                       ),
                     ),
+                    // Navigate button for area/meetpoint notifications
+                    if ((n.type == 'suggested_area' || n.type == 'meetpoint') &&
+                        n.data?['location'] != null) ...[
+                      SizedBox(height: 8.h),
+                      GestureDetector(
+                        onTap: () {
+                          final loc = n.data!['location'] as Map<String, dynamic>;
+                          final lat = (loc['lat'] as num).toDouble();
+                          final lng = (loc['lng'] as num).toDouble();
+                          final url = Uri.parse(
+                              'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+                          launchUrl(url, mode: LaunchMode.externalApplication);
+                        },
+                        child: Container(
+                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 7.h),
+                          decoration: BoxDecoration(
+                            color: n.iconColor,
+                            borderRadius: BorderRadius.circular(10.r),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Symbols.navigation, size: 14.w, color: Colors.white, fill: 1),
+                              SizedBox(width: 4.w),
+                              Text(
+                                'area_navigate'.tr(),
+                                style: TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 11.sp,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

@@ -145,7 +145,9 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
         // Listen for suggested area / meetpoint additions
         SocketService.on('area_added', (data) {
           if (!mounted) return;
-          ref.read(suggestedAreaProvider.notifier).appendArea(data as Map<String, dynamic>);
+          ref
+              .read(suggestedAreaProvider.notifier)
+              .appendArea(data as Map<String, dynamic>);
         });
 
         // Listen for suggested area / meetpoint deletions
@@ -1536,7 +1538,7 @@ class _PilgrimMapTab extends StatelessWidget {
             ),
           ),
 
-        // Center FAB
+        // Center FAB (my location)
         Positioned(
           right: 14.w,
           bottom: 14.h,
@@ -1568,6 +1570,48 @@ class _PilgrimMapTab extends StatelessWidget {
             ),
           ),
         ),
+
+        // Meetpoint pin button (only when active meetpoint exists)
+        if (areas.any((a) => a.isMeetpoint))
+          Positioned(
+            right: 14.w,
+            bottom: 74.h,
+            child: GestureDetector(
+              onTap: () {
+                final mp = areas.firstWhere((a) => a.isMeetpoint);
+                mapController.move(LatLng(mp.latitude, mp.longitude), 17);
+                _showAreaInfo(context, mp);
+              },
+              child: Container(
+                width: 48.w,
+                height: 48.w,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDC2626),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFDC2626).withOpacity(0.45),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Icon(Symbols.crisis_alert, color: Colors.white, size: 22.w),
+              ),
+            ),
+          ),
+
+        // Suggestions pin button (only when suggestions exist)
+        if (areas.any((a) => !a.isMeetpoint))
+          Positioned(
+            right: 14.w,
+            bottom: areas.any((a) => a.isMeetpoint) ? 134.h : 74.h,
+            child: _SuggestionsCycleButton(
+              areas: areas.where((a) => !a.isMeetpoint).toList(),
+              mapController: mapController,
+              onAreaSelected: (area) => _showAreaInfo(context, area),
+            ),
+          ),
 
         // No location message
         if (myLocation == null)
@@ -1691,6 +1735,88 @@ class _PlaceholderTab extends StatelessWidget {
 // Pilgrim area marker (suggestions = primary, meetpoints = red)
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Suggestions cycle button (tapping cycles through all suggested areas)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SuggestionsCycleButton extends StatefulWidget {
+  final List<SuggestedArea> areas;
+  final MapController mapController;
+  final void Function(SuggestedArea) onAreaSelected;
+  const _SuggestionsCycleButton({
+    required this.areas,
+    required this.mapController,
+    required this.onAreaSelected,
+  });
+
+  @override
+  State<_SuggestionsCycleButton> createState() => _SuggestionsCycleButtonState();
+}
+
+class _SuggestionsCycleButtonState extends State<_SuggestionsCycleButton> {
+  int _index = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final count = widget.areas.length;
+    return GestureDetector(
+      onTap: () {
+        if (widget.areas.isEmpty) return;
+        final area = widget.areas[_index % widget.areas.length];
+        widget.mapController.move(LatLng(area.latitude, area.longitude), 17);
+        widget.onAreaSelected(area);
+        setState(() => _index = (_index + 1) % widget.areas.length);
+      },
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 48.w,
+            height: 48.w,
+            decoration: BoxDecoration(
+              color: AppColors.primary,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withOpacity(0.45),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Icon(Symbols.pin_drop, color: Colors.white, size: 22.w, fill: 1),
+          ),
+          if (count > 1)
+            Positioned(
+              top: -2,
+              right: -2,
+              child: Container(
+                width: 18.w,
+                height: 18.w,
+                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                child: Center(
+                  child: Text(
+                    '$count',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 10.sp,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Area info bottom sheet + marker
+// ─────────────────────────────────────────────────────────────────────────────
+
 void _showAreaInfo(BuildContext context, SuggestedArea area) {
   final isMeetpoint = area.isMeetpoint;
   final color = isMeetpoint ? const Color(0xFFDC2626) : AppColors.primary;
@@ -1707,14 +1833,27 @@ void _showAreaInfo(BuildContext context, SuggestedArea area) {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(width: 40.w, height: 4.h, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2.r))),
+          Container(
+            width: 40.w,
+            height: 4.h,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2.r),
+            ),
+          ),
           SizedBox(height: 16.h),
           Container(
-            width: 56.w, height: 56.w,
-            decoration: BoxDecoration(color: color.withOpacity(0.12), shape: BoxShape.circle),
+            width: 56.w,
+            height: 56.w,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              shape: BoxShape.circle,
+            ),
             child: Icon(
               isMeetpoint ? Symbols.crisis_alert : Symbols.pin_drop,
-              color: color, size: 28.w, fill: 1,
+              color: color,
+              size: 28.w,
+              fill: 1,
             ),
           ),
           SizedBox(height: 12.h),
@@ -1725,28 +1864,48 @@ void _showAreaInfo(BuildContext context, SuggestedArea area) {
               borderRadius: BorderRadius.circular(8.r),
             ),
             child: Text(
-              isMeetpoint ? 'area_meetpoint'.tr() : 'area_suggestion_label'.tr(),
-              style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 10.sp, color: color),
+              isMeetpoint
+                  ? 'area_meetpoint'.tr()
+                  : 'area_suggestion_label'.tr(),
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontWeight: FontWeight.w700,
+                fontSize: 10.sp,
+                color: color,
+              ),
             ),
           ),
           SizedBox(height: 12.h),
           Text(
             area.name,
-            style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 17.sp, color: AppColors.textDark),
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontWeight: FontWeight.w700,
+              fontSize: 17.sp,
+              color: AppColors.textDark,
+            ),
             textAlign: TextAlign.center,
           ),
           if (area.description.isNotEmpty) ...[
             SizedBox(height: 6.h),
             Text(
               area.description,
-              style: TextStyle(fontFamily: 'Lexend', fontSize: 13.sp, color: AppColors.textMutedLight),
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 13.sp,
+                color: AppColors.textMutedLight,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
           SizedBox(height: 6.h),
           Text(
             '${'area_by'.tr()} ${area.createdByName}',
-            style: TextStyle(fontFamily: 'Lexend', fontSize: 11.sp, color: AppColors.textMutedLight),
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 11.sp,
+              color: AppColors.textMutedLight,
+            ),
           ),
           SizedBox(height: 20.h),
           SizedBox(
@@ -1756,17 +1915,30 @@ void _showAreaInfo(BuildContext context, SuggestedArea area) {
               onPressed: () {
                 Navigator.pop(ctx);
                 final url = Uri.parse(
-                    'https://www.google.com/maps/dir/?api=1&destination=${area.latitude},${area.longitude}');
+                  'https://www.google.com/maps/dir/?api=1&destination=${area.latitude},${area.longitude}',
+                );
                 launchUrl(url, mode: LaunchMode.externalApplication);
               },
-              icon: Icon(Symbols.navigation, size: 20.w, color: Colors.white, fill: 1),
+              icon: Icon(
+                Symbols.navigation,
+                size: 20.w,
+                color: Colors.white,
+                fill: 1,
+              ),
               label: Text(
                 'area_navigate'.tr(),
-                style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 15.sp, color: Colors.white),
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15.sp,
+                  color: Colors.white,
+                ),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: color,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16.r),
+                ),
                 elevation: 0,
               ),
             ),
@@ -1783,7 +1955,9 @@ class _PilgrimAreaMarker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = area.isMeetpoint ? const Color(0xFFDC2626) : AppColors.primary;
+    final color = area.isMeetpoint
+        ? const Color(0xFFDC2626)
+        : AppColors.primary;
     final icon = area.isMeetpoint ? Symbols.crisis_alert : Symbols.pin_drop;
 
     return Column(
@@ -1794,7 +1968,13 @@ class _PilgrimAreaMarker extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(10.r),
-            boxShadow: [BoxShadow(color: color.withOpacity(0.35), blurRadius: 8, spreadRadius: 1)],
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.35),
+                blurRadius: 8,
+                spreadRadius: 1,
+              ),
+            ],
             border: Border.all(color: color, width: 1.5),
           ),
           child: Row(
@@ -1808,7 +1988,12 @@ class _PilgrimAreaMarker extends StatelessWidget {
                   area.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 9.sp, color: color),
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 9.sp,
+                    color: color,
+                  ),
                 ),
               ),
             ],
@@ -1826,7 +2011,13 @@ class _PilgrimAreaMarker extends StatelessWidget {
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
-            boxShadow: [BoxShadow(color: color.withOpacity(0.5), blurRadius: 6, spreadRadius: 2)],
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.5),
+                blurRadius: 6,
+                spreadRadius: 2,
+              ),
+            ],
           ),
         ),
       ],

@@ -33,21 +33,22 @@ class AppNotification {
       title: json['title'] as String? ?? '',
       message: json['message'] as String? ?? '',
       read: json['read'] as bool? ?? false,
-      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ??
+      createdAt:
+          DateTime.tryParse(json['created_at'] as String? ?? '') ??
           DateTime.now(),
       data: json['data'] as Map<String, dynamic>?,
     );
   }
 
   AppNotification copyWith({bool? read}) => AppNotification(
-        id: id,
-        type: type,
-        title: title,
-        message: message,
-        read: read ?? this.read,
-        createdAt: createdAt,
-        data: data,
-      );
+    id: id,
+    type: type,
+    title: title,
+    message: message,
+    read: read ?? this.read,
+    createdAt: createdAt,
+    data: data,
+  );
 
   // ── Icon & color based on notification type ──────────────────────────────
 
