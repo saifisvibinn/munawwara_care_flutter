@@ -159,6 +159,12 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
             ref.read(suggestedAreaProvider.notifier).removeArea(areaId);
           }
         });
+
+        // Listen for notification badge refresh (new area/meetpoint/SOS notifications)
+        SocketService.on('notification_refresh', (_) {
+          if (!mounted) return;
+          ref.read(notificationProvider.notifier).fetchUnreadCount();
+        });
       }
       // Fetch notification badge count
       ref.read(notificationProvider.notifier).fetchUnreadCount();
@@ -184,6 +190,7 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
     SocketService.off('message_deleted');
     SocketService.off('area_added');
     SocketService.off('area_deleted');
+    SocketService.off('notification_refresh');
     SocketService.off('connect');
     super.dispose();
   }
