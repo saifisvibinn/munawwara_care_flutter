@@ -231,5 +231,19 @@
     "nav_to_moderator":  "Navigasi ke Moderator",
     "nav_beacon_on":  "Navigasi Aktif",
     "nav_go":  "Pergi",
-    "settings_role_pilgrim":  "Jamaah"
+    "settings_role_pilgrim":  "Jamaah",
+    "area_manage_title":  "Kelola Area",
+    "area_suggest":  "Sarankan Area",
+    "area_meetpoint":  "Titik Pertemuan",
+    "area_meetpoint_exists":  "Titik pertemuan sudah ada. Hapus dulu.",
+    "area_view_all":  "Lihat Semua Area",
+    "area_deleted":  "Area dihapus",
+    "area_search_hint":  "Cari tempat...",
+    "area_name_hint":  "Nama area",
+    "area_desc_hint":  "Deskripsi (opsional)",
+    "area_set_meetpoint":  "Tetapkan Titik Pertemuan",
+    "area_add_suggestion":  "Tambah Saran",
+    "area_suggestion_label":  "Saran",
+    "area_by":  "Oleh",
+    "area_navigate":  "Navigasi"
 }

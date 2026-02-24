@@ -23,6 +23,8 @@ import '../providers/moderator_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../calling/providers/call_provider.dart';
 import '../../calling/screens/voice_call_screen.dart';
+import '../../shared/providers/suggested_area_provider.dart';
+import '../../shared/models/suggested_area_model.dart';
 import 'group_messages_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -64,6 +66,23 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
     _searchController.addListener(() {
       if (mounted) setState(() => _searchQuery = _searchController.text);
     });
+    // Load suggested areas & meetpoints
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(suggestedAreaProvider.notifier).load(widget.groupId);
+    });
+    // Real-time area sync
+    SocketService.on('area_added', (data) {
+      if (!mounted) return;
+      ref.read(suggestedAreaProvider.notifier).appendArea(data as Map<String, dynamic>);
+    });
+    SocketService.on('area_deleted', (data) {
+      if (!mounted) return;
+      final map = data as Map<String, dynamic>;
+      final areaId = map['area_id'] as String?;
+      if (areaId != null) {
+        ref.read(suggestedAreaProvider.notifier).removeArea(areaId);
+      }
+    });
   }
 
   @override
@@ -72,6 +91,8 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
     _dssController.dispose();
     _searchController.dispose();
     _locationSub?.cancel();
+    SocketService.off('area_added');
+    SocketService.off('area_deleted');
     SocketService.emit('leave_group', widget.groupId);
     super.dispose();
   }
@@ -691,6 +712,289 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
     }).toList();
   }
 
+  // ── Area/Meetpoint Actions ────────────────────────────────────────────────
+
+  void _showAreaActions(ModeratorGroup group, SuggestedAreaState areaState) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+        ),
+        padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 32.h),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40.w,
+              height: 4.h,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2.r),
+              ),
+            ),
+            SizedBox(height: 20.h),
+            Text(
+              'area_manage_title'.tr(),
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontWeight: FontWeight.w700,
+                fontSize: 18.sp,
+                color: AppColors.textDark,
+              ),
+            ),
+            SizedBox(height: 20.h),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _openAreaPicker(group, 'suggestion');
+                    },
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 20.h, horizontal: 12.w),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(16.r),
+                        border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                      ),
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 52.w, height: 52.w,
+                            decoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                            child: Icon(Symbols.add_location, color: Colors.white, size: 26.w),
+                          ),
+                          SizedBox(height: 12.h),
+                          Text('area_suggest'.tr(), textAlign: TextAlign.center,
+                            style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 13.sp, color: AppColors.textDark)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 12.w),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      if (areaState.hasMeetpoint) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('area_meetpoint_exists'.tr()),
+                            backgroundColor: Colors.orange.shade700,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
+                          ),
+                        );
+                        return;
+                      }
+                      _openAreaPicker(group, 'meetpoint');
+                    },
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 20.h, horizontal: 12.w),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF2F2),
+                        borderRadius: BorderRadius.circular(16.r),
+                        border: Border.all(color: const Color(0xFFFECACA)),
+                      ),
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 52.w, height: 52.w,
+                            decoration: const BoxDecoration(color: Color(0xFFDC2626), shape: BoxShape.circle),
+                            child: Icon(Symbols.crisis_alert, color: Colors.white, size: 26.w),
+                          ),
+                          SizedBox(height: 12.h),
+                          Text('area_meetpoint'.tr(), textAlign: TextAlign.center,
+                            style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 13.sp, color: AppColors.textDark)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (areaState.areas.isNotEmpty) ...[
+              SizedBox(height: 16.h),
+              Divider(color: Colors.grey.shade200),
+              SizedBox(height: 8.h),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showAreaList(group, areaState);
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(vertical: 14.h),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF6F8F7),
+                    borderRadius: BorderRadius.circular(14.r),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Symbols.list, size: 18.w, color: AppColors.textDark),
+                      SizedBox(width: 8.w),
+                      Text(
+                        'area_view_all'.tr(),
+                        style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600, fontSize: 14.sp, color: AppColors.textDark),
+                      ),
+                      SizedBox(width: 6.w),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 2.h),
+                        decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.15), borderRadius: BorderRadius.circular(10.r)),
+                        child: Text('${areaState.areas.length}', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 12.sp, color: AppColors.primary)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAreaList(ModeratorGroup group, SuggestedAreaState areaState) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.65),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+        ),
+        padding: EdgeInsets.fromLTRB(16.w, 16.h, 16.w, 24.h),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40.w, height: 4.h, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2.r))),
+            SizedBox(height: 16.h),
+            Text('area_view_all'.tr(), style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 17.sp, color: AppColors.textDark)),
+            SizedBox(height: 16.h),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: areaState.areas.length,
+                itemBuilder: (_, i) {
+                  final area = areaState.areas[i];
+                  return Container(
+                    margin: EdgeInsets.only(bottom: 10.h),
+                    padding: EdgeInsets.all(12.w),
+                    decoration: BoxDecoration(
+                      color: area.isMeetpoint ? const Color(0xFFFEF2F2) : const Color(0xFFF6F8F7),
+                      borderRadius: BorderRadius.circular(14.r),
+                      border: Border.all(color: area.isMeetpoint ? const Color(0xFFFECACA) : Colors.transparent),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 36.w, height: 36.w,
+                          decoration: BoxDecoration(
+                            color: area.isMeetpoint ? const Color(0xFFDC2626) : AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            area.isMeetpoint ? Symbols.crisis_alert : Symbols.pin_drop,
+                            color: Colors.white, size: 18.w,
+                          ),
+                        ),
+                        SizedBox(width: 10.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(area.name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600, fontSize: 13.sp, color: AppColors.textDark)),
+                                  ),
+                                  SizedBox(width: 6.w),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                                    decoration: BoxDecoration(
+                                      color: area.isMeetpoint ? const Color(0xFFDC2626).withOpacity(0.15) : AppColors.primary.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(6.r),
+                                    ),
+                                    child: Text(
+                                      area.isMeetpoint ? 'area_meetpoint'.tr() : 'area_suggestion_label'.tr(),
+                                      style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600, fontSize: 9.sp,
+                                        color: area.isMeetpoint ? const Color(0xFFDC2626) : AppColors.primary),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (area.description.isNotEmpty)
+                                Text(area.description, maxLines: 1, overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(fontFamily: 'Lexend', fontSize: 11.sp, color: AppColors.textMutedLight)),
+                            ],
+                          ),
+                        ),
+                        // Focus on map
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            _mapController.move(LatLng(area.latitude, area.longitude), 17);
+                          },
+                          child: Container(
+                            width: 32.w, height: 32.w,
+                            decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), shape: BoxShape.circle),
+                            child: Icon(Symbols.my_location, size: 15.w, color: AppColors.primary),
+                          ),
+                        ),
+                        SizedBox(width: 6.w),
+                        // Delete
+                        GestureDetector(
+                          onTap: () async {
+                            final ok = await ref.read(suggestedAreaProvider.notifier).deleteArea(group.id, area.id);
+                            if (ok && ctx.mounted) {
+                              Navigator.pop(ctx);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('area_deleted'.tr()), behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r))),
+                                );
+                              }
+                            }
+                          },
+                          child: Container(
+                            width: 32.w, height: 32.w,
+                            decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), shape: BoxShape.circle),
+                            child: Icon(Symbols.delete, size: 15.w, color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openAreaPicker(ModeratorGroup group, String areaType) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => _AreaPickerScreen(
+          groupId: group.id,
+          areaType: areaType,
+          initialCenter: _myLocation,
+        ),
+      ),
+    );
+  }
+
   // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
@@ -710,6 +1014,7 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
 
     final locatedPilgrims = group.pilgrims.where((p) => p.hasLocation).toList();
     final filtered = _getFiltered(group);
+    final areaState = ref.watch(suggestedAreaProvider);
 
     return Scaffold(
       body: Stack(
@@ -767,6 +1072,18 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                           isSelected: _focusedPilgrimId == p.id,
                         ),
                       ),
+                    ),
+                ],
+              ),
+              // Suggested area & meetpoint markers
+              MarkerLayer(
+                markers: [
+                  for (var area in areaState.areas)
+                    Marker(
+                      point: LatLng(area.latitude, area.longitude),
+                      width: 80.w,
+                      height: 82.h,
+                      child: _AreaMapMarker(area: area),
                     ),
                 ],
               ),
@@ -884,6 +1201,11 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                     _CircleButton(
                       icon: Symbols.settings,
                       onTap: () => _showManageSheet(group),
+                    ),
+                    SizedBox(width: 8.w),
+                    _CircleButton(
+                      icon: Symbols.pin_drop,
+                      onTap: () => _showAreaActions(group, areaState),
                     ),
                   ],
                 ),
@@ -2226,6 +2548,355 @@ class _CircleButton extends StatelessWidget {
           ],
         ),
         child: Icon(icon, size: sz * 0.48, color: fg),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Area map marker (suggestions = primary/blue, meetpoints = red)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AreaMapMarker extends StatelessWidget {
+  final SuggestedArea area;
+  const _AreaMapMarker({required this.area});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = area.isMeetpoint ? const Color(0xFFDC2626) : AppColors.primary;
+    final icon = area.isMeetpoint ? Symbols.crisis_alert : Symbols.pin_drop;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10.r),
+            boxShadow: [BoxShadow(color: color.withOpacity(0.35), blurRadius: 8, spreadRadius: 1)],
+            border: Border.all(color: color, width: 1.5),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14.w, color: color, fill: 1),
+              SizedBox(width: 4.w),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: 56.w),
+                child: Text(
+                  area.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 9.sp, color: color),
+                ),
+              ),
+            ],
+          ),
+        ),
+        CustomPaint(
+          size: Size(10.w, 6.h),
+          painter: _MarkerTailPainter(color: color),
+        ),
+        Container(
+          width: 10.w,
+          height: 10.w,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            boxShadow: [BoxShadow(color: color.withOpacity(0.5), blurRadius: 6, spreadRadius: 2)],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Area Picker Screen (map pick + place search + name/desc input)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AreaPickerScreen extends ConsumerStatefulWidget {
+  final String groupId;
+  final String areaType;
+  final LatLng? initialCenter;
+  const _AreaPickerScreen({required this.groupId, required this.areaType, this.initialCenter});
+
+  @override
+  ConsumerState<_AreaPickerScreen> createState() => _AreaPickerScreenState();
+}
+
+class _AreaPickerScreenState extends ConsumerState<_AreaPickerScreen> {
+  final _mapController = MapController();
+  final _nameController = TextEditingController();
+  final _descController = TextEditingController();
+  final _searchController = TextEditingController();
+
+  LatLng? _pickedPoint;
+  bool _submitting = false;
+
+  // Place search
+  List<Map<String, dynamic>> _searchResults = [];
+  bool _searching = false;
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _mapController.dispose();
+    _nameController.dispose();
+    _descController.dispose();
+    _searchController.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  // ── Place search via Nominatim ────────────────────────────────────────────
+  void _onSearchChanged(String query) {
+    _debounce?.cancel();
+    if (query.trim().length < 3) {
+      setState(() => _searchResults = []);
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 500), () => _searchPlaces(query.trim()));
+  }
+
+  Future<void> _searchPlaces(String query) async {
+    setState(() => _searching = true);
+    try {
+      final dio = Dio();
+      final resp = await dio.get(
+        'https://nominatim.openstreetmap.org/search',
+        queryParameters: {
+          'q': query,
+          'format': 'json',
+          'limit': '6',
+          'viewbox': '39.7,21.5,39.95,21.3', // Makkah bounding box (approximate)
+          'bounded': '0',
+        },
+        options: Options(headers: {'User-Agent': 'FlutterMunawwara/1.0'}),
+      );
+      if (!mounted) return;
+      final list = (resp.data as List).map<Map<String, dynamic>>((e) => {
+        'display_name': e['display_name'] as String,
+        'lat': double.parse(e['lat'] as String),
+        'lon': double.parse(e['lon'] as String),
+      }).toList();
+      setState(() => _searchResults = list);
+    } catch (_) {
+      // ignore errors
+    } finally {
+      if (mounted) setState(() => _searching = false);
+    }
+  }
+
+  void _selectSearchResult(Map<String, dynamic> result) {
+    final point = LatLng(result['lat'] as double, result['lon'] as double);
+    setState(() {
+      _pickedPoint = point;
+      _searchResults = [];
+      _searchController.clear();
+    });
+    _mapController.move(point, 17);
+    // Auto-fill name if empty
+    if (_nameController.text.isEmpty) {
+      final parts = (result['display_name'] as String).split(',');
+      _nameController.text = parts.first.trim();
+    }
+  }
+
+  // ── Submit ────────────────────────────────────────────────────────────────
+  Future<void> _submit() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty || _pickedPoint == null) return;
+    setState(() => _submitting = true);
+    final (success, errorMsg) = await ref.read(suggestedAreaProvider.notifier).addArea(
+      groupId: widget.groupId,
+      name: name,
+      description: _descController.text.trim(),
+      latitude: _pickedPoint!.latitude,
+      longitude: _pickedPoint!.longitude,
+      areaType: widget.areaType,
+    );
+    if (!mounted) return;
+    setState(() => _submitting = false);
+    if (success) {
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMsg ?? (widget.areaType == 'meetpoint' ? 'area_meetpoint_exists'.tr() : 'error_generic'.tr())),
+            backgroundColor: Colors.red, behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r))),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isMeetpoint = widget.areaType == 'meetpoint';
+    final accentColor = isMeetpoint ? const Color(0xFFDC2626) : AppColors.primary;
+    final center = _pickedPoint ?? widget.initialCenter ?? const LatLng(21.4225, 39.8262);
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(icon: Icon(Symbols.arrow_back, color: AppColors.textDark), onPressed: () => Navigator.pop(context)),
+        title: Text(
+          isMeetpoint ? 'area_meetpoint'.tr() : 'area_suggest'.tr(),
+          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 17.sp, color: AppColors.textDark),
+        ),
+        centerTitle: true,
+      ),
+      body: Column(
+        children: [
+          // ── Search bar ─────────────────────────────────────────────────
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+            child: TextField(
+              controller: _searchController,
+              onChanged: _onSearchChanged,
+              style: TextStyle(fontFamily: 'Lexend', fontSize: 13.sp),
+              decoration: InputDecoration(
+                hintText: 'area_search_hint'.tr(),
+                hintStyle: TextStyle(fontFamily: 'Lexend', fontSize: 13.sp, color: AppColors.textMutedLight),
+                prefixIcon: Icon(Symbols.search, size: 20.w, color: AppColors.textMutedLight),
+                suffixIcon: _searching
+                    ? Padding(padding: EdgeInsets.all(12.w), child: SizedBox(width: 16.w, height: 16.w, child: CircularProgressIndicator(strokeWidth: 2, color: accentColor)))
+                    : null,
+                filled: true,
+                fillColor: const Color(0xFFF6F8F7),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14.r), borderSide: BorderSide.none),
+                contentPadding: EdgeInsets.symmetric(vertical: 12.h),
+              ),
+            ),
+          ),
+
+          // ── Search results dropdown ────────────────────────────────────
+          if (_searchResults.isNotEmpty)
+            Container(
+              constraints: BoxConstraints(maxHeight: 200.h),
+              margin: EdgeInsets.symmetric(horizontal: 16.w),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12.r),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12)],
+              ),
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: _searchResults.length,
+                separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade200),
+                itemBuilder: (_, i) {
+                  final r = _searchResults[i];
+                  return ListTile(
+                    dense: true,
+                    leading: Icon(Symbols.location_on, size: 18.w, color: accentColor),
+                    title: Text(r['display_name'] as String, maxLines: 2, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontFamily: 'Lexend', fontSize: 12.sp, color: AppColors.textDark)),
+                    onTap: () => _selectSearchResult(r),
+                  );
+                },
+              ),
+            ),
+
+          // ── Map ────────────────────────────────────────────────────────
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16.r),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16.r),
+                  child: FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
+                      initialCenter: center,
+                      initialZoom: 15,
+                      onTap: (_, point) {
+                        setState(() => _pickedPoint = point);
+                      },
+                    ),
+                    children: [
+                      TileLayer(urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'),
+                      if (_pickedPoint != null)
+                        MarkerLayer(
+                          markers: [
+                            Marker(
+                              point: _pickedPoint!,
+                              width: 48.w,
+                              height: 48.w,
+                              child: Icon(Symbols.location_on, size: 42.w, color: accentColor, fill: 1),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // ── Name & Description inputs ──────────────────────────────────
+          Container(
+            padding: EdgeInsets.fromLTRB(16.w, 12.h, 16.w, 8.h),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _nameController,
+                  style: TextStyle(fontFamily: 'Lexend', fontSize: 13.sp),
+                  decoration: InputDecoration(
+                    hintText: 'area_name_hint'.tr(),
+                    hintStyle: TextStyle(fontFamily: 'Lexend', fontSize: 13.sp, color: AppColors.textMutedLight),
+                    prefixIcon: Icon(isMeetpoint ? Symbols.crisis_alert : Symbols.pin_drop, size: 18.w, color: accentColor),
+                    filled: true,
+                    fillColor: const Color(0xFFF6F8F7),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14.r), borderSide: BorderSide.none),
+                    contentPadding: EdgeInsets.symmetric(vertical: 12.h),
+                  ),
+                ),
+                SizedBox(height: 8.h),
+                TextField(
+                  controller: _descController,
+                  style: TextStyle(fontFamily: 'Lexend', fontSize: 13.sp),
+                  maxLines: 1,
+                  decoration: InputDecoration(
+                    hintText: 'area_desc_hint'.tr(),
+                    hintStyle: TextStyle(fontFamily: 'Lexend', fontSize: 13.sp, color: AppColors.textMutedLight),
+                    prefixIcon: Icon(Symbols.description, size: 18.w, color: AppColors.textMutedLight),
+                    filled: true,
+                    fillColor: const Color(0xFFF6F8F7),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14.r), borderSide: BorderSide.none),
+                    contentPadding: EdgeInsets.symmetric(vertical: 12.h),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ── Submit button ──────────────────────────────────────────────
+          Padding(
+            padding: EdgeInsets.fromLTRB(16.w, 4.h, 16.w, MediaQuery.of(context).padding.bottom + 16.h),
+            child: SizedBox(
+              width: double.infinity,
+              height: 50.h,
+              child: ElevatedButton(
+                onPressed: (_pickedPoint == null || _submitting) ? null : _submit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: accentColor,
+                  disabledBackgroundColor: accentColor.withOpacity(0.35),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+                  elevation: 0,
+                ),
+                child: _submitting
+                    ? SizedBox(width: 22.w, height: 22.w, child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                    : Text(
+                        isMeetpoint ? 'area_set_meetpoint'.tr() : 'area_add_suggestion'.tr(),
+                        style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 15.sp, color: Colors.white),
+                      ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

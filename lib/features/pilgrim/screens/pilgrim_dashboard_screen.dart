@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 import 'package:battery_plus/battery_plus.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -21,6 +22,8 @@ import '../../calling/screens/incoming_call_screen.dart';
 import '../../notifications/providers/notification_provider.dart';
 import '../../notifications/screens/alerts_tab.dart';
 import '../../shared/providers/message_provider.dart';
+import '../../shared/providers/suggested_area_provider.dart';
+import '../../shared/models/suggested_area_model.dart';
 import '../providers/pilgrim_provider.dart';
 import 'group_inbox_screen.dart';
 import 'pilgrim_profile_screen.dart';
@@ -113,24 +116,55 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
               .updateModeratorBeacon(modId, modName, enabled, lat, lng);
         });
 
-        // Listen for new group messages — auto-refresh chat & badge
+        // Listen for new group messages — append silently to avoid flicker
         SocketService.on('new_message', (data) {
           if (!mounted) return;
           final groupId = ref.read(pilgrimProvider).groupInfo?.groupId;
           if (groupId == null) return;
-          // Always reload the message list so the Chat tab is fresh
-          ref.read(messageProvider.notifier).loadMessages(groupId);
+          // Append the single message without a full reload (no spinner)
+          ref
+              .read(messageProvider.notifier)
+              .appendMessage(data as Map<String, dynamic>);
           if (_currentTab == 3) {
             // User is on Chat tab → mark as read immediately
             ref.read(messageProvider.notifier).markAllRead(groupId);
-          } else {
-            // User is NOT on Chat tab → bump the unread badge
-            ref.read(messageProvider.notifier).fetchUnreadCount(groupId);
+          }
+          // unreadCount was already bumped by appendMessage for other tabs
+        });
+
+        // Listen for deleted messages — remove silently to avoid flicker
+        SocketService.on('message_deleted', (data) {
+          if (!mounted) return;
+          final map = data as Map<String, dynamic>;
+          final messageId = map['message_id'] as String?;
+          if (messageId != null) {
+            ref.read(messageProvider.notifier).removeMessage(messageId);
+          }
+        });
+
+        // Listen for suggested area / meetpoint additions
+        SocketService.on('area_added', (data) {
+          if (!mounted) return;
+          ref.read(suggestedAreaProvider.notifier).appendArea(data as Map<String, dynamic>);
+        });
+
+        // Listen for suggested area / meetpoint deletions
+        SocketService.on('area_deleted', (data) {
+          if (!mounted) return;
+          final map = data as Map<String, dynamic>;
+          final areaId = map['area_id'] as String?;
+          if (areaId != null) {
+            ref.read(suggestedAreaProvider.notifier).removeArea(areaId);
           }
         });
       }
       // Fetch notification badge count
       ref.read(notificationProvider.notifier).fetchUnreadCount();
+      // Load suggested areas if in a group
+      final gIdForAreas = ref.read(pilgrimProvider).groupInfo?.groupId;
+      if (gIdForAreas != null) {
+        ref.read(suggestedAreaProvider.notifier).load(gIdForAreas);
+      }
       _initLocation();
     });
   }
@@ -145,6 +179,9 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
     _locationSub?.cancel();
     SocketService.off('mod_nav_beacon');
     SocketService.off('new_message');
+    SocketService.off('message_deleted');
+    SocketService.off('area_added');
+    SocketService.off('area_deleted');
     SocketService.off('connect');
     super.dispose();
   }
@@ -339,6 +376,7 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
         myLocation: _myLatLng,
         mapController: _mapController,
         pilgrimState: pilgrimState,
+        areas: ref.watch(suggestedAreaProvider).areas,
       ),
       const _PlaceholderTab(icon: Symbols.calendar_month, label: 'tab_plan'),
       pilgrimState.groupInfo != null
@@ -1346,11 +1384,13 @@ class _PilgrimMapTab extends StatelessWidget {
   final LatLng? myLocation;
   final MapController mapController;
   final PilgrimState pilgrimState;
+  final List<SuggestedArea> areas;
 
   const _PilgrimMapTab({
     required this.myLocation,
     required this.mapController,
     required this.pilgrimState,
+    required this.areas,
   });
 
   @override
@@ -1374,6 +1414,22 @@ class _PilgrimMapTab extends StatelessWidget {
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
               userAgentPackageName: 'com.munawwaracare.app',
             ),
+            // Suggested areas & meetpoints
+            if (areas.isNotEmpty)
+              MarkerLayer(
+                markers: [
+                  for (var area in areas)
+                    Marker(
+                      point: LatLng(area.latitude, area.longitude),
+                      width: 80.w,
+                      height: 82.h,
+                      child: GestureDetector(
+                        onTap: () => _showAreaInfo(context, area),
+                        child: _PilgrimAreaMarker(area: area),
+                      ),
+                    ),
+                ],
+              ),
             // My location
             if (myLocation != null)
               MarkerLayer(
@@ -1629,4 +1685,170 @@ class _PlaceholderTab extends StatelessWidget {
       ),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Pilgrim area marker (suggestions = primary, meetpoints = red)
+// ─────────────────────────────────────────────────────────────────────────────
+
+void _showAreaInfo(BuildContext context, SuggestedArea area) {
+  final isMeetpoint = area.isMeetpoint;
+  final color = isMeetpoint ? const Color(0xFFDC2626) : AppColors.primary;
+
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) => Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+      ),
+      padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 32.h),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(width: 40.w, height: 4.h, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2.r))),
+          SizedBox(height: 16.h),
+          Container(
+            width: 56.w, height: 56.w,
+            decoration: BoxDecoration(color: color.withOpacity(0.12), shape: BoxShape.circle),
+            child: Icon(
+              isMeetpoint ? Symbols.crisis_alert : Symbols.pin_drop,
+              color: color, size: 28.w, fill: 1,
+            ),
+          ),
+          SizedBox(height: 12.h),
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 3.h),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(8.r),
+            ),
+            child: Text(
+              isMeetpoint ? 'area_meetpoint'.tr() : 'area_suggestion_label'.tr(),
+              style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 10.sp, color: color),
+            ),
+          ),
+          SizedBox(height: 12.h),
+          Text(
+            area.name,
+            style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 17.sp, color: AppColors.textDark),
+            textAlign: TextAlign.center,
+          ),
+          if (area.description.isNotEmpty) ...[
+            SizedBox(height: 6.h),
+            Text(
+              area.description,
+              style: TextStyle(fontFamily: 'Lexend', fontSize: 13.sp, color: AppColors.textMutedLight),
+              textAlign: TextAlign.center,
+            ),
+          ],
+          SizedBox(height: 6.h),
+          Text(
+            '${'area_by'.tr()} ${area.createdByName}',
+            style: TextStyle(fontFamily: 'Lexend', fontSize: 11.sp, color: AppColors.textMutedLight),
+          ),
+          SizedBox(height: 20.h),
+          SizedBox(
+            width: double.infinity,
+            height: 50.h,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                final url = Uri.parse(
+                    'https://www.google.com/maps/dir/?api=1&destination=${area.latitude},${area.longitude}');
+                launchUrl(url, mode: LaunchMode.externalApplication);
+              },
+              icon: Icon(Symbols.navigation, size: 20.w, color: Colors.white, fill: 1),
+              label: Text(
+                'area_navigate'.tr(),
+                style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 15.sp, color: Colors.white),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: color,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+                elevation: 0,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _PilgrimAreaMarker extends StatelessWidget {
+  final SuggestedArea area;
+  const _PilgrimAreaMarker({required this.area});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = area.isMeetpoint ? const Color(0xFFDC2626) : AppColors.primary;
+    final icon = area.isMeetpoint ? Symbols.crisis_alert : Symbols.pin_drop;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10.r),
+            boxShadow: [BoxShadow(color: color.withOpacity(0.35), blurRadius: 8, spreadRadius: 1)],
+            border: Border.all(color: color, width: 1.5),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14.w, color: color, fill: 1),
+              SizedBox(width: 4.w),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: 56.w),
+                child: Text(
+                  area.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 9.sp, color: color),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Triangle tail
+        CustomPaint(
+          size: Size(10.w, 6.h),
+          painter: _AreaTailPainter(color: color),
+        ),
+        // Circle dot
+        Container(
+          width: 10.w,
+          height: 10.w,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            boxShadow: [BoxShadow(color: color.withOpacity(0.5), blurRadius: 6, spreadRadius: 2)],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AreaTailPainter extends CustomPainter {
+  final Color color;
+  const _AreaTailPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color;
+    final path = ui.Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..lineTo(size.width, 0)
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_AreaTailPainter old) => old.color != color;
 }

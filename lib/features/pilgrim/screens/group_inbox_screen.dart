@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:material_symbols_icons/symbols.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../shared/models/message_model.dart';
@@ -45,6 +46,11 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
 
   // UI
   String _filter = 'all'; // all | urgent | voice | tts
+  final _scrollController = ScrollController();
+  final Set<String> _newMessageIds = {};
+  Timer? _highlightClearTimer;
+  int _preLoadUnread = 0; // unread count captured before _load() runs
+  bool _initialLoadDone = false; // true once the first load has completed
 
   final _filters = const [
     ('all', 'inbox_filter_all'),
@@ -100,14 +106,34 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
   void dispose() {
     _player.dispose();
     _tts.stop();
+    _scrollController.dispose();
+    _highlightClearTimer?.cancel();
     super.dispose();
   }
 
   // ── Data ──────────────────────────────────────────────────────────────────
 
   Future<void> _load() async {
+    // Capture unread count BEFORE clearing it so we know which to highlight
+    _preLoadUnread = ref.read(messageProvider).unreadCount;
     await ref.read(messageProvider.notifier).loadMessages(widget.groupId);
     await ref.read(messageProvider.notifier).markAllRead(widget.groupId);
+    // Scroll + highlight triggered by ref.listen detecting isLoading → false
+  }
+
+  void _scrollToBottom({bool jump = false}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      if (jump) {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      } else {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   List<GroupMessage> get _filtered {
@@ -178,6 +204,50 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
     final filtered = _filtered;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // Scroll & highlight driven by provider changes
+    ref.listen(messageProvider, (prev, next) {
+      // ── Initial / pull-to-refresh load finished ──────────────────────────
+      if ((prev?.isLoading ?? false) &&
+          !next.isLoading &&
+          next.messages.isNotEmpty) {
+        if (!_initialLoadDone) {
+          // Highlight the last N messages that were unread before opening
+          final count = _preLoadUnread.clamp(1, next.messages.length);
+          final highlightIds = next.messages
+              .skip(next.messages.length - count)
+              .map((m) => m.id)
+              .toSet();
+          setState(() {
+            _initialLoadDone = true;
+            _newMessageIds.addAll(highlightIds);
+          });
+          _highlightClearTimer?.cancel();
+          _highlightClearTimer = Timer(const Duration(seconds: 4), () {
+            if (mounted) setState(() => _newMessageIds.clear());
+          });
+        }
+        _scrollToBottom(jump: true);
+        return;
+      }
+      // ── New socket message appended (no loading state) ───────────────────
+      if (!next.isLoading &&
+          (prev?.messages.length ?? 0) < next.messages.length) {
+        final prevIds = prev?.messages.map((m) => m.id).toSet() ?? {};
+        final arrivedIds = next.messages
+            .where((m) => !prevIds.contains(m.id))
+            .map((m) => m.id)
+            .toSet();
+        if (arrivedIds.isNotEmpty) {
+          setState(() => _newMessageIds.addAll(arrivedIds));
+          _highlightClearTimer?.cancel();
+          _highlightClearTimer = Timer(const Duration(seconds: 3), () {
+            if (mounted) setState(() => _newMessageIds.clear());
+          });
+          _scrollToBottom(); // smooth animate — no flicker
+        }
+      }
+    });
+
     return Scaffold(
       backgroundColor: isDark
           ? AppColors.backgroundDark
@@ -200,6 +270,7 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
                       color: AppColors.primary,
                       onRefresh: _load,
                       child: ListView.builder(
+                        controller: _scrollController,
                         padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 24.h),
                         itemCount: filtered.length,
                         itemBuilder: (_, i) => _buildCard(filtered[i]),
@@ -358,24 +429,31 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
   Widget _buildCard(GroupMessage msg) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isUrgent = msg.isUrgent;
+    final isNew = _newMessageIds.contains(msg.id);
 
     Color cardBg = isDark ? AppColors.surfaceDark : Colors.white;
     Color borderColor = Colors.transparent;
     if (isUrgent) {
       cardBg = isDark ? const Color(0xFF2D1515) : const Color(0xFFFEF2F2);
       borderColor = const Color(0xFFFECACA);
+    } else if (isNew) {
+      cardBg = isDark ? const Color(0xFF1A2A1A) : const Color(0xFFECFDF5);
+      borderColor = AppColors.primary.withOpacity(0.5);
     }
 
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 600),
       margin: EdgeInsets.only(bottom: 12.h),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(16.r),
-        border: Border.all(color: borderColor, width: 1.2),
+        border: Border.all(color: borderColor, width: isNew ? 1.8 : 1.2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.05),
-            blurRadius: 8,
+            color: isNew
+                ? AppColors.primary.withOpacity(0.15)
+                : Colors.black.withOpacity(isDark ? 0.2 : 0.05),
+            blurRadius: isNew ? 14 : 8,
             offset: const Offset(0, 2),
           ),
         ],
@@ -390,6 +468,7 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
             if (msg.type == 'text') _buildTextBody(msg, isDark),
             if (msg.type == 'voice') _buildVoiceBody(msg, isDark),
             if (msg.type == 'tts') _buildTtsBody(msg, isDark),
+            if (msg.type == 'meetpoint') _buildMeetpointBody(msg, isDark),
             SizedBox(height: 8.h),
             _buildCardFooter(msg, isDark),
           ],
@@ -559,6 +638,96 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildMeetpointBody(GroupMessage msg, bool isDark) {
+    final mp = msg.meetpointData;
+    final name = mp?['name']?.toString() ?? msg.content ?? 'Meetpoint';
+    final lat = (mp?['latitude'] as num?)?.toDouble();
+    final lng = (mp?['longitude'] as num?)?.toDouble();
+
+    return Container(
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF3B1212) : const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: const Color(0xFFFECACA)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34.w, height: 34.w,
+                decoration: const BoxDecoration(color: Color(0xFFDC2626), shape: BoxShape.circle),
+                child: Icon(Symbols.crisis_alert, color: Colors.white, size: 18.w),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'area_meetpoint'.tr(),
+                      style: TextStyle(
+                        fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 10.sp,
+                        color: const Color(0xFFDC2626),
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      name,
+                      style: TextStyle(
+                        fontFamily: 'Lexend', fontWeight: FontWeight.w600, fontSize: 14.sp,
+                        color: isDark ? Colors.white : AppColors.textDark,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (msg.content != null && msg.content!.isNotEmpty && msg.content != name) ...[
+            SizedBox(height: 8.h),
+            Text(
+              msg.content!,
+              style: TextStyle(fontFamily: 'Lexend', fontSize: 13.sp, height: 1.4,
+                color: isDark ? Colors.white70 : AppColors.textDark),
+            ),
+          ],
+          if (lat != null && lng != null) ...[
+            SizedBox(height: 10.h),
+            GestureDetector(
+              onTap: () {
+                final url = Uri.parse(
+                    'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+                launchUrl(url, mode: LaunchMode.externalApplication);
+              },
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(vertical: 10.h),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDC2626),
+                  borderRadius: BorderRadius.circular(10.r),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Symbols.navigation, size: 16.w, color: Colors.white, fill: 1),
+                    SizedBox(width: 6.w),
+                    Text(
+                      'area_navigate'.tr(),
+                      style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 13.sp, color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 

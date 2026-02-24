@@ -231,5 +231,19 @@
     "nav_to_moderator":  "Naviguer vers le modérateur",
     "nav_beacon_on":  "Balise de navigation activée",
     "nav_go":  "Aller",
-    "settings_role_pilgrim":  "Pèlerin"
+    "settings_role_pilgrim":  "Pèlerin",
+    "area_manage_title":  "Gérer les zones",
+    "area_suggest":  "Suggérer une zone",
+    "area_meetpoint":  "Point de rencontre",
+    "area_meetpoint_exists":  "Un point de rencontre existe déjà. Supprimez-le d'abord.",
+    "area_view_all":  "Voir toutes les zones",
+    "area_deleted":  "Zone supprimée",
+    "area_search_hint":  "Rechercher un lieu...",
+    "area_name_hint":  "Nom de la zone",
+    "area_desc_hint":  "Description (facultatif)",
+    "area_set_meetpoint":  "Définir le point de rencontre",
+    "area_add_suggestion":  "Ajouter une suggestion",
+    "area_suggestion_label":  "Suggestion",
+    "area_by":  "Par",
+    "area_navigate":  "Naviguer"
 }

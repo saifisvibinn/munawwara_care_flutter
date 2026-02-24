@@ -231,5 +231,19 @@
     "nav_to_moderator":  "Moderatöre Git",
     "nav_beacon_on":  "Navigasyon İşareti Açık",
     "nav_go":  "Git",
-    "settings_role_pilgrim":  "Hacı"
+    "settings_role_pilgrim":  "Hacı",
+    "area_manage_title":  "Alanları Yönet",
+    "area_suggest":  "Alan Öner",
+    "area_meetpoint":  "Buluşma Noktası",
+    "area_meetpoint_exists":  "Bir buluşma noktası zaten var. Önce silin.",
+    "area_view_all":  "Tüm Alanları Görüntüle",
+    "area_deleted":  "Alan silindi",
+    "area_search_hint":  "Bir yer arayın...",
+    "area_name_hint":  "Alan adı",
+    "area_desc_hint":  "Açıklama (isteğe bağlı)",
+    "area_set_meetpoint":  "Buluşma Noktası Belirle",
+    "area_add_suggestion":  "Öneri Ekle",
+    "area_suggestion_label":  "Öneri",
+    "area_by":  "Tarafından",
+    "area_navigate":  "Yol Tarifi"
 }

@@ -231,5 +231,19 @@
     "nav_to_moderator":  "منتظم کی طرف نیویگیٹ کریں",
     "nav_beacon_on":  "نیویگیشن بیکن آن",
     "nav_go":  "جائیں",
-    "settings_role_pilgrim":  "حاجی"
+    "settings_role_pilgrim":  "حاجی",
+    "area_manage_title":  "علاقے کا انتظام",
+    "area_suggest":  "علاقہ تجویز کریں",
+    "area_meetpoint":  "ملاقات کا مقام",
+    "area_meetpoint_exists":  "ملاقات کا مقام پہلے سے موجود ہے۔ پہلے اسے حذف کریں۔",
+    "area_view_all":  "تمام علاقے دیکھیں",
+    "area_deleted":  "علاقہ حذف ہو گیا",
+    "area_search_hint":  "جگہ تلاش کریں...",
+    "area_name_hint":  "علاقے کا نام",
+    "area_desc_hint":  "تفصیل (اختیاری)",
+    "area_set_meetpoint":  "ملاقات کا مقام مقرر کریں",
+    "area_add_suggestion":  "تجویز شامل کریں",
+    "area_suggestion_label":  "تجویز",
+    "area_by":  "از",
+    "area_navigate":  "نیویگیٹ"
 }

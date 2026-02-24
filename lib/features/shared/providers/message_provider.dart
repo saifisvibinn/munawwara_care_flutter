@@ -90,6 +90,26 @@ class MessageNotifier extends Notifier<MessageState> {
     } catch (_) {}
   }
 
+  /// Silently appends a single message received from a socket event.
+  /// No loading state is touched, so the list never flickers.
+  void appendMessage(Map<String, dynamic> json) {
+    try {
+      final msg = GroupMessage.fromJson(json);
+      if (state.messages.any((m) => m.id == msg.id)) return; // dedup
+      state = state.copyWith(
+        messages: [...state.messages, msg],
+        unreadCount: state.unreadCount + 1,
+      );
+    } catch (_) {}
+  }
+
+  /// Silently removes a message received via socket (no loading state).
+  void removeMessage(String messageId) {
+    state = state.copyWith(
+      messages: state.messages.where((m) => m.id != messageId).toList(),
+    );
+  }
+
   // ── Send Text / TTS ────────────────────────────────────────────────────────
 
   Future<bool> sendTextMessage({

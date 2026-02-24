@@ -69,6 +69,10 @@ class AppNotification {
         return Symbols.do_not_disturb_on;
       case 'group_invitation':
         return Symbols.mail;
+      case 'suggested_area':
+        return Symbols.pin_drop;
+      case 'meetpoint':
+        return Symbols.crisis_alert;
       default:
         return Symbols.notifications;
     }
@@ -89,6 +93,10 @@ class AppNotification {
         return const Color(0xFF94A3B8);
       case 'group_invitation':
         return const Color(0xFF3B82F6);
+      case 'suggested_area':
+        return AppColors.primary;
+      case 'meetpoint':
+        return const Color(0xFFEF4444);
       default:
         return const Color(0xFF64748B);
     }
@@ -112,6 +120,10 @@ class AppNotification {
         return 'Declined';
       case 'group_invitation':
         return 'Invitation';
+      case 'suggested_area':
+        return 'Suggested Area';
+      case 'meetpoint':
+        return 'Meetpoint';
       default:
         return 'Notification';
     }

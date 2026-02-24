@@ -24,12 +24,13 @@ class GroupMessage {
   final String? recipientId; // null → broadcast to whole group
   final MessageSender? sender;
   final String senderModel; // 'User' | 'Pilgrim'
-  final String type; // 'text' | 'voice' | 'tts'
+  final String type; // 'text' | 'voice' | 'tts' | 'meetpoint'
   final String? content;
   final String? mediaUrl; // filename only (voice/image)
   final String? originalText; // TTS source text
   final bool isUrgent;
   final int duration; // seconds (voice)
+  final Map<String, dynamic>? meetpointData; // { area_id, name, latitude, longitude }
   final DateTime createdAt;
 
   const GroupMessage({
@@ -44,6 +45,7 @@ class GroupMessage {
     this.originalText,
     required this.isUrgent,
     required this.duration,
+    this.meetpointData,
     required this.createdAt,
   });
 
@@ -69,6 +71,9 @@ class GroupMessage {
       originalText: j['original_text']?.toString(),
       isUrgent: j['is_urgent'] as bool? ?? false,
       duration: (j['duration'] as num?)?.toInt() ?? 0,
+      meetpointData: j['meetpoint_data'] is Map<String, dynamic>
+          ? j['meetpoint_data'] as Map<String, dynamic>
+          : null,
       createdAt: j['created_at'] != null
           ? DateTime.tryParse(j['created_at'].toString()) ?? DateTime.now()
           : DateTime.now(),

@@ -231,5 +231,19 @@
     "nav_beacon_off":  "Navigation Beacon OFF",
     "nav_to_moderator":  "Navigate to Moderator",
     "nav_go":  "Go",
-    "settings_role_pilgrim":  "Pilgrim"
+    "settings_role_pilgrim":  "Pilgrim",
+    "area_manage_title":  "Manage Areas",
+    "area_suggest":  "Suggest Area",
+    "area_meetpoint":  "Meetpoint",
+    "area_meetpoint_exists":  "A meetpoint already exists. Delete it first.",
+    "area_view_all":  "View All Areas",
+    "area_deleted":  "Area deleted",
+    "area_search_hint":  "Search for a place...",
+    "area_name_hint":  "Area name",
+    "area_desc_hint":  "Description (optional)",
+    "area_set_meetpoint":  "Set Meetpoint",
+    "area_add_suggestion":  "Add Suggestion",
+    "area_suggestion_label":  "Suggestion",
+    "area_by":  "By",
+    "area_navigate":  "Navigate"
 }
