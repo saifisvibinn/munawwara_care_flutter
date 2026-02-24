@@ -40,7 +40,10 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
       vsync: this,
       duration: const Duration(milliseconds: 500),
     );
-    _scaleAnim = CurvedAnimation(parent: _successAnim, curve: Curves.elasticOut);
+    _scaleAnim = CurvedAnimation(
+      parent: _successAnim,
+      curve: Curves.elasticOut,
+    );
     _nameController.addListener(() {
       if (_fieldError != null) setState(() => _fieldError = null);
     });
@@ -61,8 +64,9 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
       return;
     }
     setState(() => _isLoading = true);
-    final (ok, err) =
-        await ref.read(moderatorProvider.notifier).createGroup(name);
+    final (ok, err) = await ref
+        .read(moderatorProvider.notifier)
+        .createGroup(name);
     if (!mounted) return;
     setState(() => _isLoading = false);
     if (ok) {
@@ -85,15 +89,15 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor:
-          isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
+      backgroundColor: isDark
+          ? AppColors.backgroundDark
+          : AppColors.backgroundLight,
       body: SafeArea(
         child: Column(
           children: [
             // ── Top bar ──
             Padding(
-              padding:
-                  EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
               child: Row(
                 children: [
                   GestureDetector(
@@ -102,9 +106,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
                       width: 42.w,
                       height: 42.w,
                       decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF1A2C24)
-                            : Colors.white,
+                        color: isDark ? const Color(0xFF1A2C24) : Colors.white,
                         shape: BoxShape.circle,
                         border: Border.all(
                           color: isDark
@@ -135,8 +137,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
                 padding: EdgeInsets.fromLTRB(24.w, 8.h, 24.w, 32.h),
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 300),
-                  child:
-                      _created ? _buildSuccess(isDark) : _buildForm(isDark),
+                  child: _created ? _buildSuccess(isDark) : _buildForm(isDark),
                 ),
               ),
             ),
@@ -161,8 +162,7 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
             color: AppColors.primary.withOpacity(0.12),
             borderRadius: BorderRadius.circular(18.r),
           ),
-          child:
-              Icon(Symbols.group_add, size: 32.w, color: AppColors.primary),
+          child: Icon(Symbols.group_add, size: 32.w, color: AppColors.primary),
         ),
 
         SizedBox(height: 20.h),
@@ -212,10 +212,10 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
               color: _fieldError != null
                   ? Colors.red.shade400
                   : (_focusNode.hasFocus
-                      ? AppColors.primary
-                      : (isDark
-                          ? const Color(0xFF2D4A3A)
-                          : const Color(0xFFE2E8F0))),
+                        ? AppColors.primary
+                        : (isDark
+                              ? const Color(0xFF2D4A3A)
+                              : const Color(0xFFE2E8F0))),
               width: _focusNode.hasFocus ? 1.5 : 1,
             ),
             boxShadow: [
@@ -247,16 +247,20 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
               ),
               prefixIcon: Padding(
                 padding: EdgeInsets.only(left: 14.w, right: 8.w),
-                child: Icon(Symbols.group,
-                    size: 22.w,
-                    color: _focusNode.hasFocus
-                        ? AppColors.primary
-                        : AppColors.textMutedLight),
+                child: Icon(
+                  Symbols.group,
+                  size: 22.w,
+                  color: _focusNode.hasFocus
+                      ? AppColors.primary
+                      : AppColors.textMutedLight,
+                ),
               ),
               prefixIconConstraints: BoxConstraints(minWidth: 46.w),
               border: InputBorder.none,
-              contentPadding:
-                  EdgeInsets.symmetric(vertical: 16.h, horizontal: 14.w),
+              contentPadding: EdgeInsets.symmetric(
+                vertical: 16.h,
+                horizontal: 14.w,
+              ),
             ),
             onSubmitted: (_) => _submit(),
           ),
@@ -290,15 +294,11 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
           decoration: BoxDecoration(
             color: AppColors.primary.withOpacity(0.06),
             borderRadius: BorderRadius.circular(14.r),
-            border: Border.all(
-                color: AppColors.primary.withOpacity(0.18)),
+            border: Border.all(color: AppColors.primary.withOpacity(0.18)),
           ),
           child: Row(
             children: [
-              Icon(Symbols.info,
-                  size: 18.w,
-                  color: AppColors.primary,
-                  fill: 1),
+              Icon(Symbols.info, size: 18.w, color: AppColors.primary, fill: 1),
               SizedBox(width: 10.w),
               Expanded(
                 child: Text(
@@ -383,8 +383,12 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
               color: AppColors.primary.withOpacity(0.12),
               shape: BoxShape.circle,
             ),
-            child: Icon(Symbols.check_circle,
-                size: 40.w, color: AppColors.primary, fill: 1),
+            child: Icon(
+              Symbols.check_circle,
+              size: 40.w,
+              color: AppColors.primary,
+              fill: 1,
+            ),
           ),
 
           SizedBox(height: 20.h),
@@ -470,30 +474,42 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen>
                 GestureDetector(
                   onTap: () {
                     Clipboard.setData(
-                        ClipboardData(text: _createdGroupCode ?? ''));
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: const Text('Code copied to clipboard!',
-                          style: TextStyle(fontFamily: 'Lexend')),
-                      behavior: SnackBarBehavior.floating,
-                      backgroundColor: AppColors.primaryDark,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12.r)),
-                    ));
+                      ClipboardData(text: _createdGroupCode ?? ''),
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text(
+                          'Code copied to clipboard!',
+                          style: TextStyle(fontFamily: 'Lexend'),
+                        ),
+                        behavior: SnackBarBehavior.floating,
+                        backgroundColor: AppColors.primaryDark,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.r),
+                        ),
+                      ),
+                    );
                   },
                   child: Container(
                     padding: EdgeInsets.symmetric(
-                        horizontal: 18.w, vertical: 10.h),
+                      horizontal: 18.w,
+                      vertical: 10.h,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.primary.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(10.r),
                       border: Border.all(
-                          color: AppColors.primary.withOpacity(0.2)),
+                        color: AppColors.primary.withOpacity(0.2),
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Symbols.content_copy,
-                            size: 16.w, color: AppColors.primary),
+                        Icon(
+                          Symbols.content_copy,
+                          size: 16.w,
+                          color: AppColors.primary,
+                        ),
                         SizedBox(width: 6.w),
                         Text(
                           'Copy Code',

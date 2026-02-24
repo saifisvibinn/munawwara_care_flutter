@@ -19,6 +19,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../providers/moderator_provider.dart';
+import '../../calling/providers/call_provider.dart';
+import '../../calling/screens/voice_call_screen.dart';
+import 'group_messages_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Group Management Screen  (map-first + manage pilgrims/moderators)
@@ -39,8 +42,7 @@ class GroupManagementScreen extends ConsumerStatefulWidget {
       _GroupManagementScreenState();
 }
 
-class _GroupManagementScreenState
-    extends ConsumerState<GroupManagementScreen> {
+class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
   final _mapController = MapController();
   final _dssController = DraggableScrollableController();
   final _searchController = TextEditingController();
@@ -48,7 +50,6 @@ class _GroupManagementScreenState
 
   LatLng? _myLocation;
   StreamSubscription<Position>? _locationSub;
-  bool _sosLoading = false;
   String? _focusedPilgrimId;
 
   @override
@@ -76,44 +77,28 @@ class _GroupManagementScreenState
     if (!status.isGranted || !mounted) return;
     try {
       final pos = await Geolocator.getCurrentPosition(
-        locationSettings:
-            const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
       if (!mounted) return;
       setState(() => _myLocation = LatLng(pos.latitude, pos.longitude));
       _mapController.move(_myLocation!, 15);
     } catch (_) {}
-    _locationSub = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 30,
-      ),
-    ).listen((pos) {
-      if (mounted) {
-        setState(() => _myLocation = LatLng(pos.latitude, pos.longitude));
-      }
-    });
+    _locationSub =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 30,
+          ),
+        ).listen((pos) {
+          if (mounted) {
+            setState(() => _myLocation = LatLng(pos.latitude, pos.longitude));
+          }
+        });
   }
 
   // ── Map helpers ───────────────────────────────────────────────────────────
-
-  void _centerOnMe() {
-    final target = _myLocation ?? const LatLng(21.3891, 39.8579);
-    _mapController.move(target, 15);
-  }
-
-  void _centerOnGroup(ModeratorGroup group) {
-    final located = group.pilgrims.where((p) => p.hasLocation).toList();
-    if (located.isEmpty) {
-      _centerOnMe();
-      return;
-    }
-    final latAvg =
-        located.map((p) => p.lat!).reduce((a, b) => a + b) / located.length;
-    final lngAvg =
-        located.map((p) => p.lng!).reduce((a, b) => a + b) / located.length;
-    _mapController.move(LatLng(latAvg, lngAvg), 14);
-  }
 
   void _focusPilgrim(PilgrimInGroup p) {
     if (!p.hasLocation) {
@@ -140,75 +125,21 @@ class _GroupManagementScreenState
     }
     final lat = p.lat!;
     final lng = p.lng!;
-    final geoUri =
-        Uri.parse('geo:$lat,$lng?q=$lat,$lng(${Uri.encodeFull(p.fullName)})');
-    if (await canLaunchUrl(geoUri)) {
-      await launchUrl(geoUri);
-    } else {
-      final gmUrl = Uri.parse(
-          'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=walking');
-      if (await canLaunchUrl(gmUrl)) {
-        await launchUrl(gmUrl, mode: LaunchMode.externalApplication);
-      }
-    }
-  }
-
-  // ── SOS broadcast ─────────────────────────────────────────────────────────
-
-  Future<void> _broadcastSOS(ModeratorGroup group) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-        title: Text(
-          '🚨 Broadcast Emergency SOS?',
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontWeight: FontWeight.w700,
-            fontSize: 16.sp,
-            color: Colors.red.shade700,
-          ),
-        ),
-        content: Text(
-          'This will send an urgent SOS message to all pilgrims in ${group.groupName}.',
-          style: TextStyle(fontFamily: 'Lexend', fontSize: 14.sp),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel',
-                style: TextStyle(
-                    fontFamily: 'Lexend', color: AppColors.textMutedLight)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade600,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10.r)),
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Send SOS',
-                style: TextStyle(
-                    fontFamily: 'Lexend', fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
+    // Try Google Maps app first (works even when app is installed)
+    final googleMapsApp = Uri.parse('google.navigation:q=$lat,$lng&mode=w');
+    final googleMapsWeb = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=walking',
     );
-    if (confirmed != true || !mounted) return;
-    setState(() => _sosLoading = true);
-    final ok = await ref.read(moderatorProvider.notifier).broadcastSOS();
-    if (!mounted) return;
-    setState(() => _sosLoading = false);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      backgroundColor: ok ? Colors.red.shade700 : Colors.grey.shade700,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-      content: Text(
-        ok ? '🚨 SOS broadcast sent!' : 'Failed to send SOS. Try again.',
-        style: const TextStyle(color: Colors.white, fontFamily: 'Lexend'),
-      ),
-    ));
+    try {
+      if (await canLaunchUrl(googleMapsApp)) {
+        await launchUrl(googleMapsApp);
+      } else {
+        await launchUrl(googleMapsWeb, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {
+      // Final fallback — open in browser
+      await launchUrl(googleMapsWeb, mode: LaunchMode.externalApplication);
+    }
   }
 
   // ── Add Pilgrim ───────────────────────────────────────────────────────────
@@ -272,13 +203,13 @@ class _GroupManagementScreenState
           }
 
           return Padding(
-            padding:
-                EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
+            ),
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(24.r)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
               ),
               padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 28.h),
               child: Column(
@@ -305,8 +236,11 @@ class _GroupManagementScreenState
                           color: AppColors.primary.withOpacity(0.12),
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(Symbols.person_add,
-                            color: AppColors.primary, size: 20.w),
+                        child: Icon(
+                          Symbols.person_add,
+                          color: AppColors.primary,
+                          size: 20.w,
+                        ),
                       ),
                       SizedBox(width: 12.w),
                       Column(
@@ -345,12 +279,16 @@ class _GroupManagementScreenState
                     decoration: InputDecoration(
                       hintText: 'e.g. +966501234567 or 1234567890',
                       hintStyle: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 13.sp,
-                          color: AppColors.textMutedLight),
+                        fontFamily: 'Lexend',
+                        fontSize: 13.sp,
+                        color: AppColors.textMutedLight,
+                      ),
                       errorText: fieldError,
-                      prefixIcon: Icon(Symbols.search,
-                          size: 20.w, color: AppColors.textMutedLight),
+                      prefixIcon: Icon(
+                        Symbols.search,
+                        size: 20.w,
+                        color: AppColors.textMutedLight,
+                      ),
                       filled: true,
                       fillColor: const Color(0xFFF6F8F7),
                       border: OutlineInputBorder(
@@ -359,11 +297,15 @@ class _GroupManagementScreenState
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12.r),
-                        borderSide:
-                            BorderSide(color: AppColors.primary, width: 1.5),
+                        borderSide: BorderSide(
+                          color: AppColors.primary,
+                          width: 1.5,
+                        ),
                       ),
                       contentPadding: EdgeInsets.symmetric(
-                          vertical: 14.h, horizontal: 16.w),
+                        vertical: 14.h,
+                        horizontal: 16.w,
+                      ),
                     ),
                     onSubmitted: (_) => submit(),
                   ),
@@ -386,14 +328,17 @@ class _GroupManagementScreenState
                               width: 20.w,
                               height: 20.w,
                               child: const CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2),
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
                             )
                           : Text(
                               'Add to Group',
                               style: TextStyle(
-                                  fontFamily: 'Lexend',
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 15.sp),
+                                fontFamily: 'Lexend',
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15.sp,
+                              ),
                             ),
                     ),
                   ),
@@ -417,42 +362,53 @@ class _GroupManagementScreenState
 
   // ── Remove pilgrim ────────────────────────────────────────────────────────
 
-  Future<void> _confirmRemovePilgrim(
-      ModeratorGroup group, PilgrimInGroup pilgrim) async {
+  Future<bool> _confirmRemovePilgrim(
+    ModeratorGroup group,
+    PilgrimInGroup pilgrim,
+  ) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.r),
+        ),
         title: Text(
           'Remove Pilgrim?',
           style: TextStyle(
-              fontFamily: 'Lexend',
-              fontWeight: FontWeight.w700,
-              fontSize: 17.sp),
+            fontFamily: 'Lexend',
+            fontWeight: FontWeight.w700,
+            fontSize: 17.sp,
+          ),
         ),
         content: Text(
           'Remove ${pilgrim.fullName} from this group?',
           style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 14.sp,
-              color: AppColors.textMutedLight),
+            fontFamily: 'Lexend',
+            fontSize: 14.sp,
+            color: AppColors.textMutedLight,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel',
-                style: TextStyle(
-                    fontFamily: 'Lexend',
-                    color: AppColors.textMutedLight)),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                color: AppColors.textMutedLight,
+              ),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text('Remove',
-                style: TextStyle(
-                    fontFamily: 'Lexend',
-                    color: Colors.red,
-                    fontWeight: FontWeight.w600)),
+            child: Text(
+              'Remove',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                color: Colors.red,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -462,14 +418,180 @@ class _GroupManagementScreenState
           .read(moderatorProvider.notifier)
           .removePilgrimFromGroup(group.id, pilgrim.id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(ok
-              ? '${pilgrim.firstName} removed'
-              : err ?? 'Failed to remove'),
-          backgroundColor: ok ? null : Colors.red,
-        ));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              ok ? '${pilgrim.firstName} removed' : err ?? 'Failed to remove',
+            ),
+            backgroundColor: ok ? null : Colors.red,
+          ),
+        );
       }
+      return ok;
     }
+    return false;
+  }
+
+  // ── Call pilgrim ──────────────────────────────────────────
+
+  void _showCallSheet(PilgrimInGroup pilgrim) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
+        ),
+        padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 32.h),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40.w,
+              height: 4.h,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2.r),
+              ),
+            ),
+            SizedBox(height: 16.h),
+            Text(
+              'Call ${pilgrim.firstName}',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontWeight: FontWeight.w700,
+                fontSize: 17.sp,
+                color: AppColors.textDark,
+              ),
+            ),
+            SizedBox(height: 20.h),
+            Row(
+              children: [
+                // ── Carrier call ────────────────────────────────────
+                if (pilgrim.phoneNumber != null)
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () async {
+                        Navigator.pop(context);
+                        final uri = Uri(scheme: 'tel', path: pilgrim.phoneNumber);
+                        if (await canLaunchUrl(uri)) launchUrl(uri);
+                      },
+                      child: Container(
+                        padding: EdgeInsets.symmetric(
+                            vertical: 18.h, horizontal: 12.w),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF6F8F7),
+                          borderRadius: BorderRadius.circular(16.r),
+                          border: Border.all(
+                              color: AppColors.primary.withOpacity(0.2)),
+                        ),
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 52.w,
+                              height: 52.w,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Symbols.smartphone,
+                                  color: Colors.white, size: 26.w),
+                            ),
+                            SizedBox(height: 10.h),
+                            Text(
+                              'Phone call',
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13.sp,
+                                color: AppColors.textDark,
+                              ),
+                            ),
+                            SizedBox(height: 4.h),
+                            Text(
+                              'Uses carrier minutes',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 10.sp,
+                                color: AppColors.textMutedLight,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                if (pilgrim.phoneNumber != null) SizedBox(width: 12.w),
+                // ── Internet call ─────────────────────────────────
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                      // Initiate WebRTC call
+                      ref.read(callProvider.notifier).startCall(
+                            remoteUserId: pilgrim.id,
+                            remoteUserName: pilgrim.fullName,
+                          );
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const VoiceCallScreen()),
+                      );
+                    },
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                          vertical: 18.h, horizontal: 12.w),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8C97A).withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(16.r),
+                        border: Border.all(
+                            color: const Color(0xFFE8C97A).withOpacity(0.4)),
+                      ),
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 52.w,
+                            height: 52.w,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFB0924A),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(Symbols.wifi_calling_3,
+                                color: Colors.white, size: 26.w),
+                          ),
+                          SizedBox(height: 10.h),
+                          Text(
+                            'Internet call',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13.sp,
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                          SizedBox(height: 4.h),
+                          Text(
+                            'Free, works anywhere',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 10.sp,
+                              color: AppColors.textMutedLight,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // ── Moderator management sheet ────────────────────────────────────────────
@@ -518,8 +640,7 @@ class _GroupManagementScreenState
       );
     }
 
-    final locatedPilgrims =
-        group.pilgrims.where((p) => p.hasLocation).toList();
+    final locatedPilgrims = group.pilgrims.where((p) => p.hasLocation).toList();
     final filtered = _getFiltered(group);
 
     return Scaffold(
@@ -537,8 +658,7 @@ class _GroupManagementScreenState
             ),
             children: [
               TileLayer(
-                urlTemplate:
-                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.munawwaracare.app',
               ),
               if (_myLocation != null)
@@ -552,8 +672,7 @@ class _GroupManagementScreenState
                         decoration: BoxDecoration(
                           color: AppColors.primary,
                           shape: BoxShape.circle,
-                          border:
-                              Border.all(color: Colors.white, width: 2.5),
+                          border: Border.all(color: Colors.white, width: 2.5),
                           boxShadow: [
                             BoxShadow(
                               color: AppColors.primary.withOpacity(0.5),
@@ -604,7 +723,9 @@ class _GroupManagementScreenState
                     Flexible(
                       child: Container(
                         padding: EdgeInsets.symmetric(
-                            horizontal: 14.w, vertical: 10.h),
+                          horizontal: 14.w,
+                          vertical: 10.h,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(14.r),
@@ -626,8 +747,11 @@ class _GroupManagementScreenState
                                 color: AppColors.primary.withOpacity(0.15),
                                 shape: BoxShape.circle,
                               ),
-                              child: Icon(Symbols.group,
-                                  color: AppColors.primary, size: 16.w),
+                              child: Icon(
+                                Symbols.group,
+                                color: AppColors.primary,
+                                size: 16.w,
+                              ),
                             ),
                             SizedBox(width: 8.w),
                             Flexible(
@@ -663,74 +787,28 @@ class _GroupManagementScreenState
                     ),
                     SizedBox(width: 8.w),
                     _CircleButton(
-                      icon: Symbols.settings,
-                      onTap: () => _showManageSheet(group),
+                      icon: Symbols.chat_bubble,
+                      backgroundColor: AppColors.primary,
+                      iconColor: Colors.white,
+                      size: 50.w,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => GroupMessagesScreen(
+                            groupId: group.id,
+                            groupName: group.groupName,
+                            currentUserId: widget.currentUserId,
+                          ),
+                        ),
+                      ),
                     ),
                     SizedBox(width: 8.w),
-                    GestureDetector(
-                      onTap: _sosLoading
-                          ? null
-                          : () => _broadcastSOS(group),
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 12.w, vertical: 10.h),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade600,
-                          borderRadius: BorderRadius.circular(14.r),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.red.withOpacity(0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: _sosLoading
-                            ? SizedBox(
-                                width: 18.w,
-                                height: 18.w,
-                                child: const CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white),
-                              )
-                            : Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Symbols.cell_tower,
-                                      size: 18.w, color: Colors.white),
-                                  SizedBox(width: 5.w),
-                                  Text(
-                                    'SOS',
-                                    style: TextStyle(
-                                      fontFamily: 'Lexend',
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12.sp,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ),
+                    _CircleButton(
+                      icon: Symbols.settings,
+                      onTap: () => _showManageSheet(group),
                     ),
                   ],
                 ),
               ),
-            ),
-          ),
-
-          // ── Right-side map FABs ───────────────────────────────────────────
-          Positioned(
-            right: 14.w,
-            bottom: 230.h,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _MapFab(icon: Symbols.my_location, onTap: _centerOnMe),
-                SizedBox(height: 10.h),
-                _MapFab(
-                  icon: Symbols.group,
-                  onTap: () => _centerOnGroup(group),
-                ),
-              ],
             ),
           ),
 
@@ -741,8 +819,7 @@ class _GroupManagementScreenState
             child: GestureDetector(
               onTap: () => _showAddPilgrimOptions(group),
               child: Container(
-                padding:
-                    EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
                 decoration: BoxDecoration(
                   color: AppColors.primary,
                   borderRadius: BorderRadius.circular(16.r),
@@ -785,8 +862,7 @@ class _GroupManagementScreenState
             builder: (ctx, scrollController) => Container(
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(24.r)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.08),
@@ -811,8 +887,7 @@ class _GroupManagementScreenState
                   ),
                   // Sheet header
                   Padding(
-                    padding:
-                        EdgeInsets.fromLTRB(16.w, 0, 16.w, 10.h),
+                    padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 10.h),
                     child: Row(
                       children: [
                         Text(
@@ -828,20 +903,25 @@ class _GroupManagementScreenState
                         if (group.sosCount > 0)
                           Container(
                             padding: EdgeInsets.symmetric(
-                                horizontal: 8.w, vertical: 4.h),
+                              horizontal: 8.w,
+                              vertical: 4.h,
+                            ),
                             decoration: BoxDecoration(
                               color: const Color(0xFFFFF1F2),
                               borderRadius: BorderRadius.circular(100.r),
                               border: Border.all(
-                                  color: const Color(0xFFFFE4E6)),
+                                color: const Color(0xFFFFE4E6),
+                              ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Symbols.warning,
-                                    size: 12.w,
-                                    color: const Color(0xFFDC2626),
-                                    fill: 1),
+                                Icon(
+                                  Symbols.warning,
+                                  size: 12.w,
+                                  color: const Color(0xFFDC2626),
+                                  fill: 1,
+                                ),
                                 SizedBox(width: 3.w),
                                 Text(
                                   '${group.sosCount} SOS',
@@ -860,8 +940,7 @@ class _GroupManagementScreenState
                   ),
                   // Search bar
                   Padding(
-                    padding:
-                        EdgeInsets.fromLTRB(16.w, 0, 16.w, 10.h),
+                    padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 10.h),
                     child: Container(
                       height: 40.h,
                       decoration: BoxDecoration(
@@ -882,14 +961,18 @@ class _GroupManagementScreenState
                             fontSize: 13.sp,
                             color: AppColors.textMutedLight,
                           ),
-                          prefixIcon: Icon(Symbols.search,
-                              size: 18.w,
-                              color: AppColors.textMutedLight),
+                          prefixIcon: Icon(
+                            Symbols.search,
+                            size: 18.w,
+                            color: AppColors.textMutedLight,
+                          ),
                           suffixIcon: _searchQuery.isNotEmpty
                               ? IconButton(
-                                  icon: Icon(Symbols.close,
-                                      size: 16.w,
-                                      color: AppColors.textMutedLight),
+                                  icon: Icon(
+                                    Symbols.close,
+                                    size: 16.w,
+                                    color: AppColors.textMutedLight,
+                                  ),
                                   onPressed: () {
                                     _searchController.clear();
                                     setState(() => _searchQuery = '');
@@ -897,8 +980,7 @@ class _GroupManagementScreenState
                                 )
                               : null,
                           border: InputBorder.none,
-                          contentPadding:
-                              EdgeInsets.symmetric(vertical: 11.h),
+                          contentPadding: EdgeInsets.symmetric(vertical: 11.h),
                         ),
                       ),
                     ),
@@ -920,18 +1002,52 @@ class _GroupManagementScreenState
                           )
                         : ListView.builder(
                             controller: scrollController,
-                            padding:
-                                EdgeInsets.fromLTRB(16.w, 0, 16.w, 24.h),
+                            padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 24.h),
                             itemCount: filtered.length,
                             itemBuilder: (ctx, i) {
                               final p = filtered[i];
-                              return _PilgrimManageTile(
-                                pilgrim: p,
-                                isSelected: _focusedPilgrimId == p.id,
-                                onTap: () => _focusPilgrim(p),
-                                onNavigate: () => _navigateToPilgrim(p),
-                                onRemove: () =>
+                              return Dismissible(
+                                key: ValueKey(p.id),
+                                direction: DismissDirection.endToStart,
+                                confirmDismiss: (_) =>
                                     _confirmRemovePilgrim(group, p),
+                                background: Container(
+                                  alignment: Alignment.centerRight,
+                                  padding: EdgeInsets.only(right: 20.w),
+                                  margin: EdgeInsets.only(bottom: 8.h),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red,
+                                    borderRadius: BorderRadius.circular(16.r),
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Symbols.person_remove,
+                                        color: Colors.white,
+                                        size: 22.w,
+                                      ),
+                                      SizedBox(height: 2.h),
+                                      Text(
+                                        'Remove',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10.sp,
+                                          fontFamily: 'Lexend',
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                child: _PilgrimManageTile(
+                                  pilgrim: p,
+                                  isSelected: _focusedPilgrimId == p.id,
+                                  onTap: () => _focusPilgrim(p),
+                                  onNavigate: () => _navigateToPilgrim(p),
+                                onCall: () => _showCallSheet(p),
+                                ),
                               );
                             },
                           ),
@@ -1007,12 +1123,15 @@ class _AddPilgrimChoiceSheet extends StatelessWidget {
                   onTap: onManual,
                   child: Container(
                     padding: EdgeInsets.symmetric(
-                        vertical: 20.h, horizontal: 12.w),
+                      vertical: 20.h,
+                      horizontal: 12.w,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.primary.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(16.r),
                       border: Border.all(
-                          color: AppColors.primary.withOpacity(0.3)),
+                        color: AppColors.primary.withOpacity(0.3),
+                      ),
                     ),
                     child: Column(
                       children: [
@@ -1023,8 +1142,11 @@ class _AddPilgrimChoiceSheet extends StatelessWidget {
                             color: AppColors.primary,
                             shape: BoxShape.circle,
                           ),
-                          child: Icon(Symbols.person_search,
-                              color: Colors.white, size: 26.w),
+                          child: Icon(
+                            Symbols.person_search,
+                            color: Colors.white,
+                            size: 26.w,
+                          ),
                         ),
                         SizedBox(height: 12.h),
                         Text(
@@ -1057,13 +1179,15 @@ class _AddPilgrimChoiceSheet extends StatelessWidget {
                   onTap: onQr,
                   child: Container(
                     padding: EdgeInsets.symmetric(
-                        vertical: 20.h, horizontal: 12.w),
+                      vertical: 20.h,
+                      horizontal: 12.w,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFE8C97A).withOpacity(0.15),
                       borderRadius: BorderRadius.circular(16.r),
                       border: Border.all(
-                          color:
-                              const Color(0xFFE8C97A).withOpacity(0.4)),
+                        color: const Color(0xFFE8C97A).withOpacity(0.4),
+                      ),
                     ),
                     child: Column(
                       children: [
@@ -1074,8 +1198,11 @@ class _AddPilgrimChoiceSheet extends StatelessWidget {
                             color: Color(0xFFB0924A),
                             shape: BoxShape.circle,
                           ),
-                          child: Icon(Symbols.qr_code,
-                              color: Colors.white, size: 26.w),
+                          child: Icon(
+                            Symbols.qr_code,
+                            color: Colors.white,
+                            size: 26.w,
+                          ),
                         ),
                         SizedBox(height: 12.h),
                         Text(
@@ -1136,12 +1263,10 @@ class _QrShareSheetState extends State<_QrShareSheet> {
 
   Future<void> _loadQr() async {
     try {
-      final resp =
-          await ApiService.dio.get('/groups/${widget.group.id}/qr');
+      final resp = await ApiService.dio.get('/groups/${widget.group.id}/qr');
       final qrCode = resp.data['qr_code'] as String?;
       if (qrCode != null) {
-        final b64 =
-            qrCode.contains(',') ? qrCode.split(',').last : qrCode;
+        final b64 = qrCode.contains(',') ? qrCode.split(',').last : qrCode;
         setState(() {
           _qrBytes = base64Decode(b64);
           _loading = false;
@@ -1215,20 +1340,23 @@ class _QrShareSheetState extends State<_QrShareSheet> {
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _error != null
-                    ? Center(
-                        child: Text(_error!,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                                fontFamily: 'Lexend',
-                                fontSize: 12.sp,
-                                color: Colors.red)))
-                    : _qrBytes != null
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(10.r),
-                            child:
-                                Image.memory(_qrBytes!, fit: BoxFit.contain),
-                          )
-                        : const SizedBox.shrink(),
+                ? Center(
+                    child: Text(
+                      _error!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12.sp,
+                        color: Colors.red,
+                      ),
+                    ),
+                  )
+                : _qrBytes != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(10.r),
+                    child: Image.memory(_qrBytes!, fit: BoxFit.contain),
+                  )
+                : const SizedBox.shrink(),
           ),
           SizedBox(height: 16.h),
           Container(
@@ -1236,10 +1364,10 @@ class _QrShareSheetState extends State<_QrShareSheet> {
               color: const Color(0xFFF6F8F7),
               borderRadius: BorderRadius.circular(12.r),
               border: Border.all(
-                  color: const Color(0xFFE8C97A).withOpacity(0.5)),
+                color: const Color(0xFFE8C97A).withOpacity(0.5),
+              ),
             ),
-            padding:
-                EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
             child: Row(
               children: [
                 Column(
@@ -1272,7 +1400,8 @@ class _QrShareSheetState extends State<_QrShareSheet> {
                 GestureDetector(
                   onTap: () {
                     Clipboard.setData(
-                        ClipboardData(text: widget.group.groupCode));
+                      ClipboardData(text: widget.group.groupCode),
+                    );
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Group code copied!')),
                     );
@@ -1284,8 +1413,11 @@ class _QrShareSheetState extends State<_QrShareSheet> {
                       color: const Color(0xFFE8C97A).withOpacity(0.2),
                       borderRadius: BorderRadius.circular(8.r),
                     ),
-                    child: Icon(Symbols.content_copy,
-                        size: 18.w, color: const Color(0xFFB0924A)),
+                    child: Icon(
+                      Symbols.content_copy,
+                      size: 18.w,
+                      color: const Color(0xFFB0924A),
+                    ),
                   ),
                 ),
               ],
@@ -1315,7 +1447,8 @@ class _QrShareSheetState extends State<_QrShareSheet> {
               style: OutlinedButton.styleFrom(
                 side: BorderSide(color: AppColors.primary),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14.r)),
+                  borderRadius: BorderRadius.circular(14.r),
+                ),
               ),
             ),
           ),
@@ -1342,7 +1475,8 @@ class _ModeratorManageSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final liveGroup = ref
+    final liveGroup =
+        ref
             .watch(moderatorProvider)
             .groups
             .cast<ModeratorGroup?>()
@@ -1384,98 +1518,110 @@ class _ModeratorManageSheet extends ConsumerWidget {
             Text(
               'Only the group creator can add or remove moderators.',
               style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 11.sp,
-                  color: AppColors.textMutedLight),
+                fontFamily: 'Lexend',
+                fontSize: 11.sp,
+                color: AppColors.textMutedLight,
+              ),
             ),
           ],
           SizedBox(height: 12.h),
-          ...liveGroup.moderators.map((mod) => ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: CircleAvatar(
-                  radius: 20.r,
-                  backgroundColor:
-                      const Color(0xFF6C63FF).withOpacity(0.15),
-                  child: Text(
-                    mod.initials,
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12.sp,
-                      color: const Color(0xFF6C63FF),
-                    ),
+          ...liveGroup.moderators.map(
+            (mod) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: CircleAvatar(
+                radius: 20.r,
+                backgroundColor: const Color(0xFF6C63FF).withOpacity(0.15),
+                child: Text(
+                  mod.initials,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12.sp,
+                    color: const Color(0xFF6C63FF),
                   ),
                 ),
-                title: Row(
-                  children: [
-                    Expanded(
+              ),
+              title: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      mod.fullName,
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14.sp,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                  ),
+                  if (mod.id == liveGroup.createdBy)
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8.w,
+                        vertical: 2.h,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8C97A).withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(20.r),
+                      ),
                       child: Text(
-                        mod.fullName,
+                        'Creator',
                         style: TextStyle(
                           fontFamily: 'Lexend',
+                          fontSize: 10.sp,
                           fontWeight: FontWeight.w600,
-                          fontSize: 14.sp,
-                          color: AppColors.textDark,
+                          color: const Color(0xFFB0924A),
                         ),
                       ),
                     ),
-                    if (mod.id == liveGroup.createdBy)
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: 8.w, vertical: 2.h),
+                ],
+              ),
+              subtitle: mod.email != null
+                  ? Text(
+                      mod.email!,
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 11.sp,
+                        color: AppColors.textMutedLight,
+                      ),
+                    )
+                  : null,
+              trailing: (isCreator && mod.id != liveGroup.createdBy)
+                  ? GestureDetector(
+                      onTap: () async {
+                        final (ok, err) = await ref
+                            .read(moderatorProvider.notifier)
+                            .removeModeratorFromGroup(liveGroup.id, mod.id);
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                ok
+                                    ? '${mod.fullName} removed'
+                                    : err ?? 'Failed',
+                              ),
+                              backgroundColor: ok ? null : Colors.red,
+                            ),
+                          );
+                        }
+                      },
+                      child: Container(
+                        width: 34.w,
+                        height: 34.w,
                         decoration: BoxDecoration(
-                          color:
-                              const Color(0xFFE8C97A).withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(20.r),
+                          color: Colors.red.withOpacity(0.1),
+                          shape: BoxShape.circle,
                         ),
-                        child: Text(
-                          'Creator',
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 10.sp,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFFB0924A),
-                          ),
+                        child: Icon(
+                          Symbols.person_remove,
+                          size: 16.w,
+                          color: Colors.red,
                         ),
                       ),
-                  ],
-                ),
-                subtitle: mod.email != null
-                    ? Text(mod.email!,
-                        style: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 11.sp,
-                            color: AppColors.textMutedLight))
-                    : null,
-                trailing: (isCreator && mod.id != liveGroup.createdBy)
-                    ? GestureDetector(
-                        onTap: () async {
-                          final (ok, err) = await ref
-                              .read(moderatorProvider.notifier)
-                              .removeModeratorFromGroup(liveGroup.id, mod.id);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context)
-                                .showSnackBar(SnackBar(
-                              content: Text(ok
-                                  ? '${mod.fullName} removed'
-                                  : err ?? 'Failed'),
-                              backgroundColor: ok ? null : Colors.red,
-                            ));
-                          }
-                        },
-                        child: Container(
-                          width: 34.w,
-                          height: 34.w,
-                          decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(Symbols.person_remove,
-                              size: 16.w, color: Colors.red),
-                        ),
-                      )
-                    : null,
-              )),
+                    )
+                  : null,
+            ),
+          ),
           if (isCreator) ...[
             SizedBox(height: 12.h),
             SizedBox(
@@ -1485,8 +1631,11 @@ class _ModeratorManageSheet extends ConsumerWidget {
                 onPressed: () async {
                   await _showInviteSheet(context, ref, liveGroup);
                 },
-                icon: Icon(Symbols.person_add,
-                    size: 18.w, color: const Color(0xFF6C63FF)),
+                icon: Icon(
+                  Symbols.person_add,
+                  size: 18.w,
+                  color: const Color(0xFF6C63FF),
+                ),
                 label: Text(
                   'Invite Co-Moderator',
                   style: TextStyle(
@@ -1497,10 +1646,10 @@ class _ModeratorManageSheet extends ConsumerWidget {
                   ),
                 ),
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(
-                      color: Color(0xFF6C63FF), width: 1.5),
+                  side: const BorderSide(color: Color(0xFF6C63FF), width: 1.5),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14.r)),
+                    borderRadius: BorderRadius.circular(14.r),
+                  ),
                 ),
               ),
             ),
@@ -1511,7 +1660,10 @@ class _ModeratorManageSheet extends ConsumerWidget {
   }
 
   Future<void> _showInviteSheet(
-      BuildContext context, WidgetRef ref, ModeratorGroup g) async {
+    BuildContext context,
+    WidgetRef ref,
+    ModeratorGroup g,
+  ) async {
     final ctrl = TextEditingController();
 
     await showModalBottomSheet(
@@ -1541,8 +1693,8 @@ class _ModeratorManageSheet extends ConsumerWidget {
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                      content: Text(
-                          "Invitation sent! They'll receive an email.")),
+                    content: Text("Invitation sent! They'll receive an email."),
+                  ),
                 );
               } else {
                 setSheetState(() {
@@ -1555,12 +1707,12 @@ class _ModeratorManageSheet extends ConsumerWidget {
 
           return Padding(
             padding: EdgeInsets.only(
-                bottom: MediaQuery.of(ctx).viewInsets.bottom),
+              bottom: MediaQuery.of(ctx).viewInsets.bottom,
+            ),
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(24.r)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
               ),
               padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 28.h),
               child: Column(
@@ -1609,12 +1761,16 @@ class _ModeratorManageSheet extends ConsumerWidget {
                     decoration: InputDecoration(
                       hintText: 'moderator@email.com',
                       hintStyle: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 13.sp,
-                          color: AppColors.textMutedLight),
+                        fontFamily: 'Lexend',
+                        fontSize: 13.sp,
+                        color: AppColors.textMutedLight,
+                      ),
                       errorText: fieldError,
-                      prefixIcon: Icon(Symbols.email,
-                          size: 20.w, color: AppColors.textMutedLight),
+                      prefixIcon: Icon(
+                        Symbols.email,
+                        size: 20.w,
+                        color: AppColors.textMutedLight,
+                      ),
                       filled: true,
                       fillColor: const Color(0xFFF6F8F7),
                       border: OutlineInputBorder(
@@ -1624,10 +1780,14 @@ class _ModeratorManageSheet extends ConsumerWidget {
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12.r),
                         borderSide: const BorderSide(
-                            color: Color(0xFF6C63FF), width: 1.5),
+                          color: Color(0xFF6C63FF),
+                          width: 1.5,
+                        ),
                       ),
                       contentPadding: EdgeInsets.symmetric(
-                          vertical: 14.h, horizontal: 16.w),
+                        vertical: 14.h,
+                        horizontal: 16.w,
+                      ),
                     ),
                     onSubmitted: (_) => submit(),
                   ),
@@ -1650,14 +1810,17 @@ class _ModeratorManageSheet extends ConsumerWidget {
                               width: 20.w,
                               height: 20.w,
                               child: const CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2),
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
                             )
                           : Text(
                               'Send Invitation',
                               style: TextStyle(
-                                  fontFamily: 'Lexend',
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 15.sp),
+                                fontFamily: 'Lexend',
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15.sp,
+                              ),
                             ),
                     ),
                   ),
@@ -1680,14 +1843,14 @@ class _PilgrimManageTile extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
   final VoidCallback onNavigate;
-  final VoidCallback onRemove;
+  final VoidCallback? onCall;
 
   const _PilgrimManageTile({
     required this.pilgrim,
     required this.isSelected,
     required this.onTap,
     required this.onNavigate,
-    required this.onRemove,
+    this.onCall,
   });
 
   @override
@@ -1709,15 +1872,15 @@ class _PilgrimManageTile extends StatelessWidget {
           color: isSelected
               ? AppColors.primary.withOpacity(0.08)
               : pilgrim.hasSOS
-                  ? const Color(0xFFFFF1F2)
-                  : const Color(0xFFF6F8F7),
+              ? const Color(0xFFFFF1F2)
+              : const Color(0xFFF6F8F7),
           borderRadius: BorderRadius.circular(14.r),
           border: Border.all(
             color: isSelected
                 ? AppColors.primary.withOpacity(0.4)
                 : pilgrim.hasSOS
-                    ? const Color(0xFFFFE4E6)
-                    : Colors.transparent,
+                ? const Color(0xFFFFE4E6)
+                : Colors.transparent,
             width: 1.5,
           ),
         ),
@@ -1737,8 +1900,12 @@ class _PilgrimManageTile extends StatelessWidget {
                   ),
                   child: Center(
                     child: pilgrim.hasSOS
-                        ? Icon(Symbols.warning,
-                            color: Colors.white, size: 18.w, fill: 1)
+                        ? Icon(
+                            Symbols.warning,
+                            color: Colors.white,
+                            size: 18.w,
+                            fill: 1,
+                          )
                         : Text(
                             pilgrim.initials,
                             style: TextStyle(
@@ -1757,7 +1924,9 @@ class _PilgrimManageTile extends StatelessWidget {
                     width: 10.w,
                     height: 10.w,
                     decoration: BoxDecoration(
-                      color: pilgrim.hasLocation ? AppColors.primary : Colors.grey,
+                      color: pilgrim.hasLocation
+                          ? AppColors.primary
+                          : Colors.grey,
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 1.5),
                     ),
@@ -1825,24 +1994,33 @@ class _PilgrimManageTile extends StatelessWidget {
                   color: AppColors.primary.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
-                child:
-                    Icon(Symbols.near_me, size: 15.w, color: AppColors.primary),
-              ),
-            ),
-            SizedBox(width: 6.w),
-            // Remove button
-            GestureDetector(
-              onTap: onRemove,
-              child: Container(
-                width: 32.w,
-                height: 32.w,
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
-                  shape: BoxShape.circle,
+                child: Icon(
+                  Symbols.near_me,
+                  size: 15.w,
+                  color: AppColors.primary,
                 ),
-                child: Icon(Symbols.delete_outline, size: 15.w, color: Colors.red),
               ),
             ),
+            if (onCall != null) ...[
+              SizedBox(width: 6.w),
+              // Call button
+              GestureDetector(
+                onTap: onCall,
+                child: Container(
+                  width: 32.w,
+                  height: 32.w,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF16A34A).withOpacity(0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Symbols.call,
+                    size: 15.w,
+                    color: const Color(0xFF16A34A),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -1858,10 +2036,7 @@ class _PilgrimMapMarker extends StatelessWidget {
   final PilgrimInGroup pilgrim;
   final bool isSelected;
 
-  const _PilgrimMapMarker({
-    required this.pilgrim,
-    this.isSelected = false,
-  });
+  const _PilgrimMapMarker({required this.pilgrim, this.isSelected = false});
 
   @override
   Widget build(BuildContext context) {
@@ -1890,8 +2065,7 @@ class _PilgrimMapMarker extends StatelessWidget {
             ],
           ),
           child: isSOS
-              ? Icon(Symbols.warning,
-                  color: Colors.white, size: 18.w, fill: 1)
+              ? Icon(Symbols.warning, color: Colors.white, size: 18.w, fill: 1)
               : Center(
                   child: Text(
                     pilgrim.initials,
@@ -1939,57 +2113,42 @@ class _MarkerTailPainter extends CustomPainter {
 class _CircleButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
+  final Color? backgroundColor;
+  final Color? iconColor;
+  final double? size;
 
-  const _CircleButton({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 42.w,
-        height: 42.w,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Icon(icon, size: 20.w, color: AppColors.textDark),
-      ),
-    );
-  }
-}
-
-class _MapFab extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  const _MapFab({required this.icon, required this.onTap});
+  const _CircleButton({
+    required this.icon,
+    required this.onTap,
+    this.backgroundColor,
+    this.iconColor,
+    this.size,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final bg = backgroundColor ?? Colors.white;
+    final fg = iconColor ?? AppColors.textDark;
+    final sz = size ?? 42.w;
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 44.w,
-        height: 44.w,
+        width: sz,
+        height: sz,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: bg,
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.12),
+              color: bg == Colors.white
+                  ? Colors.black.withOpacity(0.1)
+                  : bg.withOpacity(0.45),
               blurRadius: 10,
-              offset: const Offset(0, 2),
+              offset: const Offset(0, 3),
             ),
           ],
         ),
-        child: Icon(icon, size: 20.w, color: AppColors.textDark),
+        child: Icon(icon, size: sz * 0.48, color: fg),
       ),
     );
   }

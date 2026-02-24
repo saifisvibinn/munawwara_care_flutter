@@ -97,17 +97,13 @@ class GroupModerator {
   final String fullName;
   final String? email;
 
-  const GroupModerator({
-    required this.id,
-    required this.fullName,
-    this.email,
-  });
+  const GroupModerator({required this.id, required this.fullName, this.email});
 
   factory GroupModerator.fromJson(Map<String, dynamic> j) => GroupModerator(
-        id: j['_id']?.toString() ?? '',
-        fullName: j['full_name']?.toString() ?? '',
-        email: j['email']?.toString(),
-      );
+    id: j['_id']?.toString() ?? '',
+    fullName: j['full_name']?.toString() ?? '',
+    email: j['email']?.toString(),
+  );
 
   String get initials {
     final parts = fullName.trim().split(' ');
@@ -136,32 +132,31 @@ class ModeratorGroup {
   });
 
   factory ModeratorGroup.fromJson(Map<String, dynamic> j) => ModeratorGroup(
-        id: j['_id']?.toString() ?? '',
-        groupName: j['group_name']?.toString() ?? '',
-        groupCode: j['group_code']?.toString() ?? '',
-        createdBy: j['created_by']?.toString() ?? '',
-        moderators: (j['moderator_ids'] as List<dynamic>? ?? [])
-            .whereType<Map<String, dynamic>>()
-            .map(GroupModerator.fromJson)
-            .toList(),
-        pilgrims: (j['pilgrims'] as List<dynamic>? ?? [])
-            .map((p) => PilgrimInGroup.fromJson(p as Map<String, dynamic>))
-            .toList(),
-      );
+    id: j['_id']?.toString() ?? '',
+    groupName: j['group_name']?.toString() ?? '',
+    groupCode: j['group_code']?.toString() ?? '',
+    createdBy: j['created_by']?.toString() ?? '',
+    moderators: (j['moderator_ids'] as List<dynamic>? ?? [])
+        .whereType<Map<String, dynamic>>()
+        .map(GroupModerator.fromJson)
+        .toList(),
+    pilgrims: (j['pilgrims'] as List<dynamic>? ?? [])
+        .map((p) => PilgrimInGroup.fromJson(p as Map<String, dynamic>))
+        .toList(),
+  );
 
   ModeratorGroup copyWith({
     List<PilgrimInGroup>? pilgrims,
     List<GroupModerator>? moderators,
     String? groupName,
-  }) =>
-      ModeratorGroup(
-        id: id,
-        groupName: groupName ?? this.groupName,
-        groupCode: groupCode,
-        createdBy: createdBy,
-        moderators: moderators ?? this.moderators,
-        pilgrims: pilgrims ?? this.pilgrims,
-      );
+  }) => ModeratorGroup(
+    id: id,
+    groupName: groupName ?? this.groupName,
+    groupCode: groupCode,
+    createdBy: createdBy,
+    moderators: moderators ?? this.moderators,
+    pilgrims: pilgrims ?? this.pilgrims,
+  );
 
   int get totalPilgrims => pilgrims.length;
   int get onlineCount => pilgrims.where((p) => p.hasLocation).length;
@@ -277,7 +272,9 @@ class ModeratorNotifier extends Notifier<ModeratorState> {
 
   // Add a pilgrim by email / phone / national ID
   Future<(bool, String?)> addPilgrimToGroup(
-      String groupId, String identifier) async {
+    String groupId,
+    String identifier,
+  ) async {
     try {
       await ApiService.dio.post(
         '/groups/$groupId/add-pilgrim',
@@ -294,7 +291,9 @@ class ModeratorNotifier extends Notifier<ModeratorState> {
 
   // Remove a pilgrim from the group
   Future<(bool, String?)> removePilgrimFromGroup(
-      String groupId, String pilgrimId) async {
+    String groupId,
+    String pilgrimId,
+  ) async {
     try {
       await ApiService.dio.post(
         '/groups/$groupId/remove-pilgrim',
@@ -317,8 +316,7 @@ class ModeratorNotifier extends Notifier<ModeratorState> {
   }
 
   // Invite a new moderator by email (sends email invite)
-  Future<(bool, String?)> inviteModerator(
-      String groupId, String email) async {
+  Future<(bool, String?)> inviteModerator(String groupId, String email) async {
     try {
       await ApiService.dio.post(
         '/groups/$groupId/invite',
@@ -334,7 +332,9 @@ class ModeratorNotifier extends Notifier<ModeratorState> {
 
   // Remove a moderator (creator only)
   Future<(bool, String?)> removeModeratorFromGroup(
-      String groupId, String modId) async {
+    String groupId,
+    String modId,
+  ) async {
     try {
       await ApiService.dio.delete('/groups/$groupId/moderators/$modId');
       final groups = state.groups.map((g) {
@@ -356,10 +356,12 @@ class ModeratorNotifier extends Notifier<ModeratorState> {
   Future<void> refreshGroup(String groupId) async {
     try {
       final resp = await ApiService.dio.get('/groups/$groupId');
-      final updated =
-          ModeratorGroup.fromJson(resp.data as Map<String, dynamic>);
-      final groups =
-          state.groups.map((g) => g.id == groupId ? updated : g).toList();
+      final updated = ModeratorGroup.fromJson(
+        resp.data as Map<String, dynamic>,
+      );
+      final groups = state.groups
+          .map((g) => g.id == groupId ? updated : g)
+          .toList();
       state = state.copyWith(groups: groups);
     } catch (_) {}
   }
@@ -371,7 +373,9 @@ class ModeratorNotifier extends Notifier<ModeratorState> {
         '/groups/create',
         data: {'group_name': groupName.trim()},
       );
-      final created = ModeratorGroup.fromJson(resp.data as Map<String, dynamic>);
+      final created = ModeratorGroup.fromJson(
+        resp.data as Map<String, dynamic>,
+      );
       state = state.copyWith(groups: [...state.groups, created]);
       return (true, null);
     } on DioException catch (e) {
@@ -386,10 +390,7 @@ class ModeratorNotifier extends Notifier<ModeratorState> {
     try {
       await ApiService.dio.delete('/groups/$groupId');
       final updated = state.groups.where((g) => g.id != groupId).toList();
-      state = state.copyWith(
-        groups: updated,
-        selectedGroupIndex: 0,
-      );
+      state = state.copyWith(groups: updated, selectedGroupIndex: 0);
       return (true, null);
     } on DioException catch (e) {
       return (false, ApiService.parseError(e));

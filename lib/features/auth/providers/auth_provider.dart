@@ -8,6 +8,7 @@ import '../../../core/services/api_service.dart';
 
 class AuthState {
   final bool isLoading;
+  final bool isRestoringSession;
   final String? error;
   final String? token;
   final String? role;
@@ -16,6 +17,7 @@ class AuthState {
 
   const AuthState({
     this.isLoading = false,
+    this.isRestoringSession = false,
     this.error,
     this.token,
     this.role,
@@ -27,6 +29,7 @@ class AuthState {
 
   AuthState copyWith({
     bool? isLoading,
+    bool? isRestoringSession,
     String? error,
     String? token,
     String? role,
@@ -36,6 +39,7 @@ class AuthState {
   }) {
     return AuthState(
       isLoading: isLoading ?? this.isLoading,
+      isRestoringSession: isRestoringSession ?? this.isRestoringSession,
       error: clearError ? null : (error ?? this.error),
       token: token ?? this.token,
       role: role ?? this.role,
@@ -52,7 +56,7 @@ class AuthNotifier extends Notifier<AuthState> {
   @override
   AuthState build() {
     _restoreSession();
-    return const AuthState();
+    return const AuthState(isRestoringSession: true);
   }
 
   // ── Restore session on startup ──────────────────────────────────────────────
@@ -66,11 +70,14 @@ class AuthNotifier extends Notifier<AuthState> {
     if (token != null) {
       ApiService.dio.options.headers['Authorization'] = 'Bearer $token';
       state = AuthState(
+        isRestoringSession: false,
         token: token,
         role: role,
         userId: userId,
         fullName: fullName,
       );
+    } else {
+      state = const AuthState(isRestoringSession: false);
     }
   }
 

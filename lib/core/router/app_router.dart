@@ -7,7 +7,7 @@ import '../../features/moderator/screens/moderator_dashboard_screen.dart';
 
 class AppRouter {
   static final GoRouter router = GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/',
     routes: [
       GoRoute(
         path: '/',

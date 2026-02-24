@@ -6,13 +6,19 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:material_symbols_icons/symbols.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../../core/services/api_service.dart';
+import '../../../core/services/socket_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../calling/providers/call_provider.dart';
+import '../../calling/screens/incoming_call_screen.dart';
+import '../../shared/providers/message_provider.dart';
 import '../providers/pilgrim_provider.dart';
+import 'group_inbox_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pilgrim Dashboard Screen
@@ -60,8 +66,23 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
     )..repeat(reverse: true);
 
     // Load data after first frame so the provider is ready
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(pilgrimProvider.notifier).loadDashboard();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await ref.read(pilgrimProvider.notifier).loadDashboard();
+      final groupId = ref.read(pilgrimProvider).groupInfo?.groupId;
+      if (groupId != null) {
+        ref.read(messageProvider.notifier).fetchUnreadCount(groupId);
+      }
+      // Connect socket with this pilgrim's identity
+      final auth = ref.read(authProvider);
+      if (auth.userId != null) {
+        final socketUrl = ApiService.baseUrl.replaceFirst(RegExp(r'/api$'), '');
+        SocketService.connect(
+          serverUrl: socketUrl,
+          userId: auth.userId!,
+          role: auth.role ?? 'pilgrim',
+        );
+        ref.read(callProvider.notifier).reRegisterListeners();
+      }
       _initLocation();
     });
   }
@@ -150,6 +171,18 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
     final pilgrimState = ref.watch(pilgrimProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // Show incoming call screen when a call arrives
+    ref.listen(callProvider, (_, next) {
+      if (next.status == CallStatus.ringing && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            fullscreenDialog: true,
+            builder: (_) => const IncomingCallScreen(),
+          ),
+        );
+      }
+    });
+
     final tabs = [
       _HomeTab(
         pilgrimState: pilgrimState,
@@ -167,7 +200,15 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
         pilgrimState: pilgrimState,
       ),
       _PlaceholderTab(icon: Symbols.calendar_month, label: 'tab_plan'.tr()),
-      _PlaceholderTab(icon: Symbols.chat_bubble, label: 'tab_chat'.tr()),
+      pilgrimState.groupInfo != null
+          ? GroupInboxScreen(
+              groupId: pilgrimState.groupInfo!.groupId,
+              groupName: pilgrimState.groupInfo!.groupName,
+            )
+          : const _PlaceholderTab(
+              icon: Symbols.chat_bubble,
+              label: 'No group yet',
+            ),
       _PlaceholderTab(icon: Symbols.person, label: 'tab_me'.tr()),
     ];
 
@@ -178,8 +219,17 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
       body: IndexedStack(index: _currentTab, children: tabs),
       bottomNavigationBar: _BottomNav(
         currentIndex: _currentTab,
-        onTap: (i) => setState(() => _currentTab = i),
-        unreadMessages: 0, // TODO: plug in real unread from messages provider
+        onTap: (i) {
+          setState(() => _currentTab = i);
+          // Mark messages as read when opening Chat tab
+          if (i == 3) {
+            final groupId = ref.read(pilgrimProvider).groupInfo?.groupId;
+            if (groupId != null) {
+              ref.read(messageProvider.notifier).markAllRead(groupId);
+            }
+          }
+        },
+        unreadMessages: ref.watch(messageProvider).unreadCount,
         isDark: isDark,
       ),
     );
@@ -861,7 +911,6 @@ class _PilgrimMapTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final group = pilgrimState.groupInfo;
 
     return Stack(

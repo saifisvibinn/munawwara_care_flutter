@@ -20,6 +20,7 @@ import '../providers/moderator_provider.dart';
 
 class ModeratorGroupMapScreen extends ConsumerStatefulWidget {
   final ModeratorGroup group;
+
   /// If set, the map will center on this pilgrim's location on load.
   final String? focusPilgrimId;
 
@@ -67,15 +68,14 @@ class _ModeratorGroupMapScreenState
   Future<void> _initLocation() async {
     // If we have a specific pilgrim to focus, center there first
     if (widget.focusPilgrimId != null) {
-      final target = widget.group.pilgrims
-          .cast<PilgrimInGroup?>()
-          .firstWhere((p) => p?.id == widget.focusPilgrimId,
-              orElse: () => null);
+      final target = widget.group.pilgrims.cast<PilgrimInGroup?>().firstWhere(
+        (p) => p?.id == widget.focusPilgrimId,
+        orElse: () => null,
+      );
       if (target != null && target.hasLocation) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            _mapController.move(
-                LatLng(target.lat!, target.lng!), 17);
+            _mapController.move(LatLng(target.lat!, target.lng!), 17);
           }
         });
       }

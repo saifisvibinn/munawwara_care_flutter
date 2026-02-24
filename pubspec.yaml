@@ -50,6 +50,12 @@ dependencies:
   latlong2: ^0.9.1
   url_launcher: ^6.3.1
   share_plus: ^10.1.4
+  audioplayers: ^6.1.0
+  record: ^6.0.0
+  flutter_tts: ^4.2.2
+  path_provider: ^2.1.5
+  agora_rtc_engine: ^6.5.2
+  socket_io_client: ^3.0.1
 
 dev_dependencies:
   flutter_test:

@@ -3,8 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:material_symbols_icons/symbols.dart';
 
+import '../../../core/services/api_service.dart';
+import '../../../core/services/socket_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../calling/providers/call_provider.dart';
+import '../../calling/screens/incoming_call_screen.dart';
+import '../../notifications/providers/notification_provider.dart';
+import '../../notifications/screens/alerts_tab.dart';
 import '../providers/moderator_provider.dart';
 import 'create_group_screen.dart';
 import 'group_management_screen.dart';
@@ -24,7 +30,7 @@ class ModeratorDashboardScreen extends ConsumerStatefulWidget {
 
 class _ModeratorDashboardScreenState
     extends ConsumerState<ModeratorDashboardScreen> {
-  int _currentTab = 0; // 0=Home, 1=Alerts, 2=Chat, 3=Profile
+  int _currentTab = 0; // 0=Home, 1=Alerts
   final _searchController = TextEditingController();
 
   @override
@@ -32,6 +38,20 @@ class _ModeratorDashboardScreenState
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(moderatorProvider.notifier).loadDashboard();
+      // Connect socket with this moderator's identity
+      final auth = ref.read(authProvider);
+      if (auth.userId != null) {
+        final socketUrl = ApiService.baseUrl.replaceFirst(RegExp(r'/api$'), '');
+        SocketService.connect(
+          serverUrl: socketUrl,
+          userId: auth.userId!,
+          role: auth.role ?? 'moderator',
+        );
+        // Make sure call provider's listeners are registered
+        ref.read(callProvider.notifier).reRegisterListeners();
+        // Fetch unread notification count for badge
+        ref.read(notificationProvider.notifier).fetchUnreadCount();
+      }
     });
   }
 
@@ -45,6 +65,18 @@ class _ModeratorDashboardScreenState
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // Show incoming call screen when a call arrives
+    ref.listen(callProvider, (_, next) {
+      if (next.status == CallStatus.ringing && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            fullscreenDialog: true,
+            builder: (_) => const IncomingCallScreen(),
+          ),
+        );
+      }
+    });
+
     return Scaffold(
       backgroundColor: isDark
           ? AppColors.backgroundDark
@@ -53,20 +85,16 @@ class _ModeratorDashboardScreenState
         index: _currentTab,
         children: [
           _GroupsHomeTab(searchController: _searchController),
-          const _PlaceholderTab(icon: Symbols.notifications, label: 'Alerts'),
-          const _PlaceholderTab(icon: Symbols.chat_bubble, label: 'Chat'),
-          const _PlaceholderTab(icon: Symbols.person, label: 'Profile'),
+          const AlertsTab(),
         ],
       ),
       floatingActionButton: SizedBox(
         width: 56.w,
         height: 56.w,
         child: FloatingActionButton(
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const CreateGroupScreen(),
-            ),
-          ),
+          onPressed: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const CreateGroupScreen())),
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           shape: const CircleBorder(),
@@ -169,33 +197,36 @@ class _GroupsHomeTabState extends ConsumerState<_GroupsHomeTab> {
                             ],
                           ),
                         ),
-                        Container(
-                          width: 42.w,
-                          height: 42.w,
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? const Color(0xFF1A2C24)
-                                : Colors.white,
-                            shape: BoxShape.circle,
-                            border: Border.all(
+                        GestureDetector(
+                          onTap: () {},
+                          child: Container(
+                            width: 42.w,
+                            height: 42.w,
+                            decoration: BoxDecoration(
                               color: isDark
-                                  ? const Color(0xFF2D4A3A)
-                                  : const Color(0xFFE2E8F0),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.06),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
+                                  ? const Color(0xFF1A2C24)
+                                  : Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: isDark
+                                    ? const Color(0xFF2D4A3A)
+                                    : const Color(0xFFE2E8F0),
                               ),
-                            ],
-                          ),
-                          child: Icon(
-                            Symbols.notifications,
-                            size: 20.w,
-                            color: isDark
-                                ? const Color(0xFFCBD5E1)
-                                : const Color(0xFF475569),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.06),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Symbols.person,
+                              size: 20.w,
+                              color: isDark
+                                  ? const Color(0xFFCBD5E1)
+                                  : const Color(0xFF475569),
+                            ),
                           ),
                         ),
                       ],
@@ -367,18 +398,13 @@ class _GroupsHomeTabState extends ConsumerState<_GroupsHomeTab> {
                 padding: EdgeInsets.symmetric(horizontal: 20.w),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate((ctx, i) {
-                    if (i < groups.length) {
-                      return Padding(
-                        padding: EdgeInsets.only(bottom: 16.h),
-                        child: _GroupCard(group: groups[i]),
-                      );
-                    }
-                    // Last item: Create New Group button
                     return Padding(
-                      padding: EdgeInsets.only(bottom: 24.h),
-                      child: const _CreateGroupButton(),
+                      padding: EdgeInsets.only(
+                        bottom: i == groups.length - 1 ? 24.h : 16.h,
+                      ),
+                      child: _GroupCard(group: groups[i]),
                     );
-                  }, childCount: groups.length + 1),
+                  }, childCount: groups.length),
                 ),
               ),
           ],
@@ -506,18 +532,25 @@ class _GroupCard extends ConsumerWidget {
       builder: (_) => _DeleteGroupSheet(groupName: group.groupName),
     );
     if (confirmed != true) return;
-    final (ok, err) =
-        await ref.read(moderatorProvider.notifier).deleteGroup(group.id);
+    final (ok, err) = await ref
+        .read(moderatorProvider.notifier)
+        .deleteGroup(group.id);
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(
-        ok ? '"${group.groupName}" deleted.' : (err ?? 'Failed to delete group'),
-        style: const TextStyle(fontFamily: 'Lexend'),
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? '"${group.groupName}" deleted.'
+              : (err ?? 'Failed to delete group'),
+          style: const TextStyle(fontFamily: 'Lexend'),
+        ),
+        backgroundColor: ok ? const Color(0xFF1E293B) : Colors.red.shade700,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.r),
+        ),
       ),
-      backgroundColor: ok ? const Color(0xFF1E293B) : Colors.red.shade700,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
-    ));
+    );
   }
 
   @override
@@ -526,14 +559,11 @@ class _GroupCard extends ConsumerWidget {
 
     return GestureDetector(
       onTap: () {
-        final userId =
-            ref.read(authProvider).userId ?? '';
+        final userId = ref.read(authProvider).userId ?? '';
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (_) => GroupManagementScreen(
-              groupId: group.id,
-              currentUserId: userId,
-            ),
+            builder: (_) =>
+                GroupManagementScreen(groupId: group.id, currentUserId: userId),
           ),
         );
       },
@@ -694,8 +724,7 @@ class _GroupCard extends ConsumerWidget {
                   GestureDetector(
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) =>
-                            ModeratorGroupMapScreen(group: group),
+                        builder: (_) => ModeratorGroupMapScreen(group: group),
                       ),
                     ),
                     child: Row(
@@ -896,8 +925,12 @@ class _DeleteGroupSheet extends StatelessWidget {
               color: const Color(0xFFFFF1F2),
               shape: BoxShape.circle,
             ),
-            child: Icon(Symbols.delete_forever,
-                size: 28.w, color: const Color(0xFFDC2626), fill: 1),
+            child: Icon(
+              Symbols.delete_forever,
+              size: 28.w,
+              color: const Color(0xFFDC2626),
+              fill: 1,
+            ),
           ),
           SizedBox(height: 16.h),
           Text(
@@ -932,7 +965,8 @@ class _DeleteGroupSheet extends StatelessWidget {
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14.r)),
+                  borderRadius: BorderRadius.circular(14.r),
+                ),
               ),
               child: Text(
                 'Delete Group',
@@ -953,7 +987,8 @@ class _DeleteGroupSheet extends StatelessWidget {
               onPressed: () => Navigator.of(context).pop(false),
               style: TextButton.styleFrom(
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14.r)),
+                  borderRadius: BorderRadius.circular(14.r),
+                ),
               ),
               child: Text(
                 'Cancel',
@@ -983,9 +1018,9 @@ class _CreateGroupButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const CreateGroupScreen()),
-      ),
+      onTap: () => Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const CreateGroupScreen())),
       child: Container(
         padding: EdgeInsets.symmetric(vertical: 24.h),
         decoration: BoxDecoration(
@@ -1036,13 +1071,13 @@ class _CreateGroupButton extends StatelessWidget {
 // Bottom Nav
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _ModBottomNav extends StatelessWidget {
+class _ModBottomNav extends ConsumerWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
   const _ModBottomNav({required this.currentIndex, required this.onTap});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return BottomAppBar(
       height: 70.h,
       color: Colors.white,
@@ -1053,35 +1088,25 @@ class _ModBottomNav extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _NavItem(
-            icon: Symbols.grid_view,
-            label: 'Home',
-            index: 0,
-            current: currentIndex,
-            onTap: onTap,
+          Expanded(
+            child: _NavItem(
+              icon: Symbols.grid_view,
+              label: 'Home',
+              index: 0,
+              current: currentIndex,
+              onTap: onTap,
+            ),
           ),
-          _NavItem(
-            icon: Symbols.notifications,
-            label: 'Alerts',
-            index: 1,
-            current: currentIndex,
-            onTap: onTap,
-            badge: true,
-          ),
-          SizedBox(width: 56.w),
-          _NavItem(
-            icon: Symbols.chat_bubble,
-            label: 'Chat',
-            index: 2,
-            current: currentIndex,
-            onTap: onTap,
-          ),
-          _NavItem(
-            icon: Symbols.person,
-            label: 'Profile',
-            index: 3,
-            current: currentIndex,
-            onTap: onTap,
+          SizedBox(width: 64.w),
+          Expanded(
+            child: _NavItem(
+              icon: Symbols.notifications,
+              label: 'Alerts',
+              index: 1,
+              current: currentIndex,
+              onTap: onTap,
+              badge: ref.watch(notificationProvider).unreadCount > 0,
+            ),
           ),
         ],
       ),
@@ -1112,8 +1137,7 @@ class _NavItem extends StatelessWidget {
     return GestureDetector(
       onTap: () => onTap(index),
       behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 60.w,
+      child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
