@@ -230,5 +230,6 @@
     "nav_beacon_off":  "Balise de navigation désactivée",
     "nav_to_moderator":  "Naviguer vers le modérateur",
     "nav_beacon_on":  "Balise de navigation activée",
-    "nav_go":  "Aller"
+    "nav_go":  "Aller",
+    "settings_role_pilgrim":  "Pèlerin"
 }

@@ -230,5 +230,6 @@
     "nav_beacon_on":  "Navigation Beacon ON",
     "nav_beacon_off":  "Navigation Beacon OFF",
     "nav_to_moderator":  "Navigate to Moderator",
-    "nav_go":  "Go"
+    "nav_go":  "Go",
+    "settings_role_pilgrim":  "Pilgrim"
 }

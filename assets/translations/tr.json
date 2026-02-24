@@ -230,5 +230,6 @@
     "nav_beacon_off":  "Navigasyon İşareti Kapalı",
     "nav_to_moderator":  "Moderatöre Git",
     "nav_beacon_on":  "Navigasyon İşareti Açık",
-    "nav_go":  "Git"
+    "nav_go":  "Git",
+    "settings_role_pilgrim":  "Hacı"
 }

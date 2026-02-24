@@ -230,5 +230,6 @@
     "nav_beacon_off":  "منارة التنقل متوقفة",
     "nav_to_moderator":  "التنقل إلى المشرف",
     "nav_beacon_on":  "منارة التنقل مفعلة",
-    "nav_go":  "انطلق"
+    "nav_go":  "انطلق",
+    "settings_role_pilgrim":  "حاج"
 }

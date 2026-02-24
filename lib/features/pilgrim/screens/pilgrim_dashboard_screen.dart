@@ -18,9 +18,12 @@ import '../../../core/theme/app_colors.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../calling/providers/call_provider.dart';
 import '../../calling/screens/incoming_call_screen.dart';
+import '../../notifications/providers/notification_provider.dart';
+import '../../notifications/screens/alerts_tab.dart';
 import '../../shared/providers/message_provider.dart';
 import '../providers/pilgrim_provider.dart';
 import 'group_inbox_screen.dart';
+import 'pilgrim_profile_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Pilgrim Dashboard Screen
@@ -109,7 +112,25 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
               .read(pilgrimProvider.notifier)
               .updateModeratorBeacon(modId, modName, enabled, lat, lng);
         });
+
+        // Listen for new group messages — auto-refresh chat & badge
+        SocketService.on('new_message', (data) {
+          if (!mounted) return;
+          final groupId = ref.read(pilgrimProvider).groupInfo?.groupId;
+          if (groupId == null) return;
+          // Always reload the message list so the Chat tab is fresh
+          ref.read(messageProvider.notifier).loadMessages(groupId);
+          if (_currentTab == 3) {
+            // User is on Chat tab → mark as read immediately
+            ref.read(messageProvider.notifier).markAllRead(groupId);
+          } else {
+            // User is NOT on Chat tab → bump the unread badge
+            ref.read(messageProvider.notifier).fetchUnreadCount(groupId);
+          }
+        });
       }
+      // Fetch notification badge count
+      ref.read(notificationProvider.notifier).fetchUnreadCount();
       _initLocation();
     });
   }
@@ -123,6 +144,7 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
     _sosCountdownTimer?.cancel();
     _locationSub?.cancel();
     SocketService.off('mod_nav_beacon');
+    SocketService.off('new_message');
     SocketService.off('connect');
     super.dispose();
   }
@@ -283,6 +305,8 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
       }
     });
 
+    final notifCount = ref.watch(notificationProvider).unreadCount;
+
     final tabs = [
       _HomeTab(
         pilgrimState: pilgrimState,
@@ -297,13 +321,26 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
         onCancelSos: _cancelSOS,
         navBeacons: pilgrimState.navBeacons,
         onNavigateToModerator: _navigateToModerator,
+        notificationCount: notifCount,
+        onNotificationTap: () {
+          Navigator.of(context)
+              .push(
+                MaterialPageRoute(
+                  builder: (_) => const _PilgrimNotificationsScreen(),
+                ),
+              )
+              .then((_) {
+                // Refresh badge when coming back
+                ref.read(notificationProvider.notifier).fetchUnreadCount();
+              });
+        },
       ),
       _PilgrimMapTab(
         myLocation: _myLatLng,
         mapController: _mapController,
         pilgrimState: pilgrimState,
       ),
-      _PlaceholderTab(icon: Symbols.calendar_month, label: 'tab_plan'),
+      const _PlaceholderTab(icon: Symbols.calendar_month, label: 'tab_plan'),
       pilgrimState.groupInfo != null
           ? GroupInboxScreen(
               groupId: pilgrimState.groupInfo!.groupId,
@@ -313,28 +350,37 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
               icon: Symbols.chat_bubble,
               label: 'pilgrim_no_group',
             ),
-      _PlaceholderTab(icon: Symbols.person, label: 'tab_me'),
+      const PilgrimProfileScreen(),
     ];
 
-    return Scaffold(
-      backgroundColor: isDark
-          ? AppColors.backgroundDark
-          : const Color(0xfff1f5f3),
-      body: IndexedStack(index: _currentTab, children: tabs),
-      bottomNavigationBar: _BottomNav(
-        currentIndex: _currentTab,
-        onTap: (i) {
-          setState(() => _currentTab = i);
-          // Mark messages as read when opening Chat tab
-          if (i == 3) {
-            final groupId = ref.read(pilgrimProvider).groupInfo?.groupId;
-            if (groupId != null) {
-              ref.read(messageProvider.notifier).markAllRead(groupId);
+    return PopScope(
+      canPop: _currentTab == 0,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) {
+          setState(() => _currentTab = 0);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: isDark
+            ? AppColors.backgroundDark
+            : const Color(0xfff1f5f3),
+        body: IndexedStack(index: _currentTab, children: tabs),
+        bottomNavigationBar: _BottomNav(
+          currentIndex: _currentTab,
+          onTap: (i) {
+            setState(() => _currentTab = i);
+            // Reload + mark messages as read when opening Chat tab
+            if (i == 3) {
+              final groupId = ref.read(pilgrimProvider).groupInfo?.groupId;
+              if (groupId != null) {
+                ref.read(messageProvider.notifier).loadMessages(groupId);
+                ref.read(messageProvider.notifier).markAllRead(groupId);
+              }
             }
-          }
-        },
-        unreadMessages: ref.watch(messageProvider).unreadCount,
-        isDark: isDark,
+          },
+          unreadMessages: ref.watch(messageProvider).unreadCount,
+          isDark: isDark,
+        ),
       ),
     );
   }
@@ -357,6 +403,8 @@ class _HomeTab extends StatelessWidget {
   final VoidCallback onCancelSos;
   final Map<String, ModeratorBeacon> navBeacons;
   final void Function(ModeratorBeacon) onNavigateToModerator;
+  final int notificationCount;
+  final VoidCallback onNotificationTap;
 
   const _HomeTab({
     required this.pilgrimState,
@@ -371,6 +419,8 @@ class _HomeTab extends StatelessWidget {
     required this.onCancelSos,
     required this.navBeacons,
     required this.onNavigateToModerator,
+    required this.notificationCount,
+    required this.onNotificationTap,
   });
 
   @override
@@ -434,43 +484,63 @@ class _HomeTab extends StatelessWidget {
                       ),
                     ),
                     // Notification bell
-                    Stack(
-                      children: [
-                        Container(
-                          width: 42.w,
-                          height: 42.w,
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? AppColors.surfaceDark
-                                : Colors.white,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.06),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            Symbols.notifications,
-                            size: 22.w,
-                            color: isDark ? Colors.white70 : AppColors.textDark,
-                          ),
-                        ),
-                        Positioned(
-                          top: 6.w,
-                          right: 6.w,
-                          child: Container(
-                            width: 10.w,
-                            height: 10.w,
-                            decoration: const BoxDecoration(
-                              color: Colors.red,
+                    GestureDetector(
+                      onTap: onNotificationTap,
+                      child: Stack(
+                        children: [
+                          Container(
+                            width: 42.w,
+                            height: 42.w,
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? AppColors.surfaceDark
+                                  : Colors.white,
                               shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.06),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Symbols.notifications,
+                              size: 22.w,
+                              color: isDark
+                                  ? Colors.white70
+                                  : AppColors.textDark,
                             ),
                           ),
-                        ),
-                      ],
+                          if (notificationCount > 0)
+                            Positioned(
+                              top: 2.w,
+                              right: 0,
+                              child: Container(
+                                padding: EdgeInsets.all(3.w),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                constraints: BoxConstraints(
+                                  minWidth: 16.w,
+                                  minHeight: 16.w,
+                                ),
+                                child: Text(
+                                  notificationCount > 9
+                                      ? '9+'
+                                      : '$notificationCount',
+                                  style: TextStyle(
+                                    fontSize: 9.sp,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -811,7 +881,7 @@ class _HomeTab extends StatelessWidget {
 // SOS Button Widget
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _SosButton extends StatelessWidget {
+class _SosButton extends StatefulWidget {
   final AnimationController pulseController;
   final AnimationController holdController;
   final bool isHolding;
@@ -833,135 +903,194 @@ class _SosButton extends StatelessWidget {
   });
 
   @override
+  State<_SosButton> createState() => _SosButtonState();
+}
+
+class _SosButtonState extends State<_SosButton>
+    with SingleTickerProviderStateMixin {
+  bool _isPressed = false;
+  late AnimationController _scaleController;
+  late Animation<double> _scaleAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _scaleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 120),
+    );
+    _scaleAnim = Tween<double>(begin: 1.0, end: 0.88).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _scaleController.dispose();
+    super.dispose();
+  }
+
+  void _onDown() {
+    setState(() => _isPressed = true);
+    _scaleController.forward();
+  }
+
+  void _onUp() {
+    setState(() => _isPressed = false);
+    _scaleController.reverse();
+  }
+
+  @override
   Widget build(BuildContext context) {
     const double size = 180;
     const double ringStroke = 6;
 
     return GestureDetector(
-      onLongPressStart: (_) => onHoldStart(),
-      onLongPressEnd: (_) => onHoldEnd(),
-      onLongPressCancel: () => onHoldEnd(),
-      child: SizedBox(
-        width: size.w,
-        height: size.w,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Pulse glow
-            AnimatedBuilder(
-              animation: pulseController,
-              builder: (_, _) {
-                final scale = 1.0 + 0.15 * pulseController.value;
-                return Transform.scale(
-                  scale: scale,
-                  child: Container(
-                    width: size.w,
-                    height: size.w,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: (sosActive ? Colors.red : Colors.red).withOpacity(
-                        0.15 * pulseController.value,
+      onLongPressDown: (_) => _onDown(),
+      onLongPressStart: (_) => widget.onHoldStart(),
+      onLongPressEnd: (_) {
+        _onUp();
+        widget.onHoldEnd();
+      },
+      onLongPressCancel: () {
+        _onUp();
+        widget.onHoldEnd();
+      },
+      child: AnimatedBuilder(
+        animation: _scaleAnim,
+        builder: (_, child) =>
+            Transform.scale(scale: _scaleAnim.value, child: child),
+        child: SizedBox(
+          width: size.w,
+          height: size.w,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Pulse glow
+              AnimatedBuilder(
+                animation: widget.pulseController,
+                builder: (_, _) {
+                  final scale = 1.0 + 0.15 * widget.pulseController.value;
+                  return Transform.scale(
+                    scale: scale,
+                    child: Container(
+                      width: size.w,
+                      height: size.w,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.red.withOpacity(
+                          0.15 * widget.pulseController.value,
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
-            ),
+                  );
+                },
+              ),
 
-            // Main red circle
-            Container(
-              width: (size - 20).w,
-              height: (size - 20).w,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    sosActive ? Colors.red.shade300 : Colors.red.shade400,
-                    sosActive ? Colors.red.shade700 : Colors.red.shade700,
+              // Main red circle
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 120),
+                width: (size - 20).w,
+                height: (size - 20).w,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: _isPressed || widget.isHolding
+                        ? [Colors.red.shade600, Colors.red.shade900]
+                        : [
+                            widget.sosActive
+                                ? Colors.red.shade300
+                                : Colors.red.shade400,
+                            widget.sosActive
+                                ? Colors.red.shade700
+                                : Colors.red.shade700,
+                          ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.red.withOpacity(
+                        _isPressed || widget.isHolding ? 0.25 : 0.45,
+                      ),
+                      blurRadius: _isPressed || widget.isHolding ? 14 : 30,
+                      spreadRadius: _isPressed || widget.isHolding ? 1 : 4,
+                    ),
                   ],
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.red.withOpacity(0.45),
-                    blurRadius: 30,
-                    spreadRadius: 4,
-                  ),
-                ],
-              ),
-              child: isLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 3,
+                child: widget.isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 3,
+                        ),
+                      )
+                    : widget.isHolding
+                    ? Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '${widget.countdown}',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 56.sp,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            'sec',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 14.sp,
+                              color: Colors.white70,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            widget.sosActive ? 'ACTIVE' : '505',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 20.sp,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white.withOpacity(0.6),
+                              letterSpacing: 2,
+                            ),
+                          ),
+                          Text(
+                            'SOS',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 28.sp,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              letterSpacing: 4,
+                            ),
+                          ),
+                        ],
                       ),
-                    )
-                  : isHolding
-                  ? Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          '$countdown',
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 56.sp,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                          ),
-                        ),
-                        Text(
-                          'sec',
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 14.sp,
-                            color: Colors.white70,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ],
-                    )
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          sosActive ? 'ACTIVE' : '505',
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 20.sp,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white.withOpacity(0.6),
-                            letterSpacing: 2,
-                          ),
-                        ),
-                        Text(
-                          'SOS',
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 28.sp,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            letterSpacing: 4,
-                          ),
-                        ),
-                      ],
-                    ),
-            ),
+              ),
 
-            // Hold progress ring
-            if (isHolding)
-              AnimatedBuilder(
-                animation: holdController,
-                builder: (_, _) => SizedBox(
-                  width: size.w,
-                  height: size.w,
-                  child: CircularProgressIndicator(
-                    value: holdController.value,
-                    strokeWidth: ringStroke,
-                    color: Colors.white,
-                    backgroundColor: Colors.white.withOpacity(0.2),
+              // Hold progress ring
+              if (widget.isHolding)
+                AnimatedBuilder(
+                  animation: widget.holdController,
+                  builder: (_, _) => SizedBox(
+                    width: size.w,
+                    height: size.w,
+                    child: CircularProgressIndicator(
+                      value: widget.holdController.value,
+                      strokeWidth: ringStroke,
+                      color: Colors.white,
+                      backgroundColor: Colors.white.withOpacity(0.2),
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1096,14 +1225,14 @@ class _BottomNav extends StatelessWidget {
       'tab_map'.tr(),
       'tab_plan'.tr(),
       'tab_chat'.tr(),
-      'tab_me'.tr(),
+      'settings_title'.tr(),
     ];
     final icons = [
       Symbols.home,
       Symbols.map,
       Symbols.calendar_month,
       Symbols.chat_bubble,
-      Symbols.person,
+      Symbols.settings,
     ];
     final badges = [0, 0, 0, unreadMessages, 0];
 
@@ -1416,6 +1545,47 @@ class _PilgrimMapTab extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Pilgrim Notifications Screen — wraps AlertsTab in a Scaffold with back nav
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _PilgrimNotificationsScreen extends StatelessWidget {
+  const _PilgrimNotificationsScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Scaffold(
+      backgroundColor: isDark
+          ? AppColors.backgroundDark
+          : const Color(0xfff1f5f3),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(8.w, 12.h, 20.w, 0),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: isDark ? Colors.white : AppColors.textDark,
+                      size: 20.sp,
+                    ),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  const Spacer(),
+                ],
+              ),
+            ),
+            const Expanded(child: AlertsTab()),
+          ],
+        ),
+      ),
     );
   }
 }
