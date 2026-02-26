@@ -200,7 +200,7 @@ class _ModeratorProfileScreenState
                             ),
                             Switch(
                               value: isDark,
-                              activeColor: AppColors.primary,
+                              activeThumbColor: AppColors.primary,
                               onChanged: (_) => themeNotifier.toggle(),
                             ),
                           ],

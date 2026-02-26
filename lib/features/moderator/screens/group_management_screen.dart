@@ -3015,7 +3015,7 @@ class _AreaPickerScreenState extends ConsumerState<_AreaPickerScreen> {
               child: ListView.separated(
                 shrinkWrap: true,
                 itemCount: _searchResults.length,
-                separatorBuilder: (_, __) =>
+                separatorBuilder: (_, _) =>
                     Divider(height: 1, color: Colors.grey.shade200),
                 itemBuilder: (_, i) {
                   final r = _searchResults[i];

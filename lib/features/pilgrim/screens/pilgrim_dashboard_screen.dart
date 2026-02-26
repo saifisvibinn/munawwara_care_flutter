@@ -99,8 +99,9 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
         SocketService.on('connect', (_) {
           if (!mounted) return;
           final reconnectGroupId = ref.read(pilgrimProvider).groupInfo?.groupId;
-          if (reconnectGroupId != null)
+          if (reconnectGroupId != null) {
             SocketService.emit('join_group', reconnectGroupId);
+          }
         });
         // Listen for moderator navigation beacon
         SocketService.on('mod_nav_beacon', (data) {

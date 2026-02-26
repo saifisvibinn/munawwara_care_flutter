@@ -313,7 +313,7 @@ class _PilgrimProfileScreenState extends ConsumerState<PilgrimProfileScreen> {
                             ),
                             Switch(
                               value: isDark,
-                              activeColor: AppColors.primary,
+                              activeThumbColor: AppColors.primary,
                               onChanged: (_) => themeNotifier.toggle(),
                             ),
                           ],
