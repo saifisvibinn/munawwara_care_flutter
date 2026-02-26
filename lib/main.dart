@@ -7,6 +7,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'core/providers/theme_provider.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'core/env/env_check.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,6 +16,10 @@ void main() async {
   // Fonts are served from the local cache only — avoids ANR on emulators.
   GoogleFonts.config.allowRuntimeFetching = false;
   await EasyLocalization.ensureInitialized();
+  // Load environment variables from the project's .env file.
+  await dotenv.load(fileName: '.env');
+  // Verify required/optional environment variables and fail-fast on missing required keys.
+  await verifyEnv();
   // Ensures ScreenUtil has a valid screen size before any widget renders,
   // preventing fontSize = 0 assertion errors on the first frame.
   await ScreenUtil.ensureScreenSize();

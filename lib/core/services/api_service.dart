@@ -1,33 +1,40 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiService {
   // ─── Backend URL ─────────────────────────────────────────────────────────────
-  // Deployed Cloud Run backend — works from any network.
-  // For local development, change to: 'http://192.168.x.x:5000/api'
-  static const String baseUrl = 'https://mcbackendapp-199324116788.europe-west8.run.app/api';
+  // Use `API_BASE_URL` from .env when available; fall back to the
+  // production Cloud Run URL. For local dev, set API_BASE_URL to
+  // 'http://192.168.x.x:5000/api' in your .env.
+  static String get baseUrl =>
+      dotenv.env['API_BASE_URL'] ??
+      'https://mcbackendapp-199324116788.europe-west8.run.app/api';
 
-  static final Dio _dio = Dio(
-    BaseOptions(
-      baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 15),
-      headers: {'Content-Type': 'application/json'},
-    ),
-  );
+  static Dio? _dioInstance;
 
-  static Dio get dio => _dio;
+  static Dio get dio {
+    _dioInstance ??= Dio(
+      BaseOptions(
+        baseUrl: baseUrl,
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(seconds: 15),
+        headers: {'Content-Type': 'application/json'},
+      ),
+    );
+    return _dioInstance!;
+  }
 
   // ── Token Management ──────────────────────────────────────────────────────────
 
   static Future<void> setAuthToken(String token) async {
-    _dio.options.headers['Authorization'] = 'Bearer $token';
+    dio.options.headers['Authorization'] = 'Bearer $token';
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('auth_token', token);
   }
 
   static Future<void> clearAuthToken() async {
-    _dio.options.headers.remove('Authorization');
+    dio.options.headers.remove('Authorization');
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
     await prefs.remove('user_role');
@@ -40,7 +47,7 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('auth_token');
     if (token != null) {
-      _dio.options.headers['Authorization'] = 'Bearer $token';
+      dio.options.headers['Authorization'] = 'Bearer $token';
     }
     return token;
   }
