@@ -137,6 +137,7 @@
     "group_remove_title":  "Haciyi Çıkar?",
     "group_remove_cancel":  "İptal",
     "group_remove_confirm":  "Çıkar",
+    "group_remove_body":  "Kaldırmak istediğinizden emin misiniz",
     "group_no_matches":  "Eşleşme yok",
     "group_no_pilgrims":  "Henüz haci yok",
     "group_search_hint":  "Haci ara...",
@@ -245,5 +246,18 @@
     "area_add_suggestion":  "Öneri Ekle",
     "area_suggestion_label":  "Öneri",
     "area_by":  "Tarafından",
-    "area_navigate":  "Yol Tarifi"
+    "area_navigate":  "Yol Tarifi",
+    "join_group_title":  "QR Kodu Tara",
+    "join_group_align":  "Grubunuza otomatik olarak katılmak için QR kodunu çerçeve içine hizalayın.",
+    "join_group_trouble":  "Taramada sorun mu var?",
+    "join_group_trouble_sub":  "Grup moderatörünüzün verdiği alfasayısal kodu girin.",
+    "join_group_code_hint":  "ÖRN: HAJJ-2024-X",
+    "join_group_btn":  "Gruba Katıl",
+    "join_group_where":  "Kodumu nerede bulabilirim?",
+    "join_group_where_body":  "Grup kodunu moderatörünüzden isteyin — grup yönetim ekranında bulabilirler.",
+    "join_group_success":  "{name} grubuna katıldınız!",
+    "join_group_enter_code":  "Lütfen bir grup kodu girin",
+    "join_group_no_group_title":  "Henüz bir grupta değilsiniz",
+    "join_group_no_group_sub":  "Başlamak için QR kodu tarayın veya grup kodunuzu girin.",
+    "join_group_no_group_btn":  "Bir Gruba Katıl"
 }

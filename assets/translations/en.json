@@ -137,6 +137,7 @@
     "group_remove_title":  "Remove Pilgrim?",
     "group_remove_cancel":  "Cancel",
     "group_remove_confirm":  "Remove",
+    "group_remove_body":  "Are you sure you want to remove",
     "group_no_matches":  "No matches",
     "group_no_pilgrims":  "No pilgrims yet",
     "group_search_hint":  "Search pilgrims...",
@@ -245,5 +246,18 @@
     "area_add_suggestion":  "Add Suggestion",
     "area_suggestion_label":  "Suggestion",
     "area_by":  "By",
-    "area_navigate":  "Navigate"
+    "area_navigate":  "Navigate",
+    "join_group_title":  "Scan QR Code",
+    "join_group_align":  "Align the QR code within the frame to join your group automatically.",
+    "join_group_trouble":  "Having trouble scanning?",
+    "join_group_trouble_sub":  "Enter the alphanumeric code provided by your group moderator.",
+    "join_group_code_hint":  "EX: HAJJ-2024-X",
+    "join_group_btn":  "Join Group",
+    "join_group_where":  "Where do I find my code?",
+    "join_group_where_body":  "Ask your group moderator for the group code — they can find it on the group management screen.",
+    "join_group_success":  "You have joined {name}!",
+    "join_group_enter_code":  "Please enter a group code",
+    "join_group_no_group_title":  "Not in a group yet",
+    "join_group_no_group_sub":  "Scan a QR code or enter your group code to get started.",
+    "join_group_no_group_btn":  "Join a Group"
 }

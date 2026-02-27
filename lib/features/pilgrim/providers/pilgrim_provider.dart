@@ -286,6 +286,23 @@ class PilgrimNotifier extends Notifier<PilgrimState> {
   void cancelSOS() {
     state = state.copyWith(sosActive: false);
   }
+
+  Future<(bool, String?)> joinGroup(String groupCode) async {
+    try {
+      final res = await ApiService.dio.post(
+        '/groups/join',
+        data: {'group_code': groupCode.trim().toUpperCase()},
+      );
+      final data = res.data as Map<String, dynamic>?;
+      // Reload dashboard so groupInfo is populated
+      await loadDashboard();
+      return (true, data?['group']?['group_name']?.toString());
+    } on DioException catch (e) {
+      return (false, ApiService.parseError(e));
+    } catch (e) {
+      return (false, e.toString());
+    }
+  }
 }
 
 // ── Provider ──────────────────────────────────────────────────────────────────

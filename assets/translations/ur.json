@@ -137,6 +137,7 @@
     "group_remove_title":  "حاج ہٹائیں؟",
     "group_remove_cancel":  "منسوخ",
     "group_remove_confirm":  "ہٹائیں",
+    "group_remove_body":  "کیا آپ واقعی ہٹانا چاہتے ہیں",
     "group_no_matches":  "کوئی نتیجہ نہیں",
     "group_no_pilgrims":  "ابھی کوئی حجاج نہیں",
     "group_search_hint":  "حجاج تلاش کریں...",
@@ -245,5 +246,18 @@
     "area_add_suggestion":  "تجویز شامل کریں",
     "area_suggestion_label":  "تجویز",
     "area_by":  "از",
-    "area_navigate":  "نیویگیٹ"
+    "area_navigate":  "نیویگیٹ",
+    "join_group_title":  "QR کوڈ سکین کریں",
+    "join_group_align":  "اپنے گروپ میں خود کار شامل ہونے کے لیے QR کوڈ کو فریم کے اندر رکھیں.",
+    "join_group_trouble":  "سکین میں مشکل ہے?",
+    "join_group_trouble_sub":  "اپنے گروپ نگراں کا دیا گیا کوڈ درج کریں.",
+    "join_group_code_hint":  "مثال: HAJJ-2024-X",
+    "join_group_btn":  "گروپ میں شامل ہوں",
+    "join_group_where":  "میرا کوڈ کہاں سے ملے گا?",
+    "join_group_where_body":  "اپنے گروپ نگراں سے گروپ کوڈ مانگیں - وہ گروپ مینیجمنٹ اسکرین پر دیکھ سکتے ہیں.",
+    "join_group_success":  "آپ {name} میں شامل ہو گئے!",
+    "join_group_enter_code":  "کرپیں کوئی گروپ کوڈ درج کریں",
+    "join_group_no_group_title":  "ابھی کسی گروپ میں نہیں",
+    "join_group_no_group_sub":  "شروع کرنے کے لیے QR کوڈ سکین کریں یا گروپ کوڈ درج کریں.",
+    "join_group_no_group_btn":  "گروپ میں شامل ہوں"
 }

@@ -65,18 +65,16 @@ class NotificationNotifier extends Notifier<NotificationState> {
           await _markAllReadRemote();
           state = state.copyWith(
             unreadCount: 0,
-            notifications:
-                state.notifications.map((n) => n.copyWith(read: true)).toList(),
+            notifications: state.notifications
+                .map((n) => n.copyWith(read: true))
+                .toList(),
           );
         }
       } else {
         state = state.copyWith(isLoading: false, error: 'Failed to load');
       }
     } on DioException catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: ApiService.parseError(e),
-      );
+      state = state.copyWith(isLoading: false, error: ApiService.parseError(e));
     }
   }
 
@@ -101,10 +99,7 @@ class NotificationNotifier extends Notifier<NotificationState> {
             .map((e) => AppNotification.fromJson(e as Map<String, dynamic>))
             .toList();
         final unread = data['unread_count'] as int? ?? 0;
-        state = state.copyWith(
-          notifications: list,
-          unreadCount: unread,
-        );
+        state = state.copyWith(notifications: list, unreadCount: unread);
       }
     } catch (_) {}
   }
@@ -149,5 +144,5 @@ class NotificationNotifier extends Notifier<NotificationState> {
 
 final notificationProvider =
     NotifierProvider<NotificationNotifier, NotificationState>(
-  NotificationNotifier.new,
-);
+      NotificationNotifier.new,
+    );

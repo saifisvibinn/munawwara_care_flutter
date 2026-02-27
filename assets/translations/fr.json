@@ -137,6 +137,7 @@
     "group_remove_title":  "Retirer le pèlerin ?",
     "group_remove_cancel":  "Annuler",
     "group_remove_confirm":  "Retirer",
+    "group_remove_body":  "Êtes-vous sûr de vouloir retirer",
     "group_no_matches":  "Aucun résultat",
     "group_no_pilgrims":  "Aucun pèlerin encore",
     "group_search_hint":  "Rechercher des pèlerins...",
@@ -245,5 +246,18 @@
     "area_add_suggestion":  "Ajouter une suggestion",
     "area_suggestion_label":  "Suggestion",
     "area_by":  "Par",
-    "area_navigate":  "Naviguer"
+    "area_navigate":  "Naviguer",
+    "join_group_title":  "Scanner le QR Code",
+    "join_group_align":  "Alignez le QR code dans le cadre pour rejoindre votre groupe automatiquement.",
+    "join_group_trouble":  "Problème de scan ?",
+    "join_group_trouble_sub":  "Entrez le code alphanumérique fourni par votre modérateur.",
+    "join_group_code_hint":  "EX : HAJJ-2024-X",
+    "join_group_btn":  "Rejoindre le groupe",
+    "join_group_where":  "Où trouver mon code ?",
+    "join_group_where_body":  "Demandez le code à votre modérateur — il peut le trouver sur l'écran de gestion du groupe.",
+    "join_group_success":  "Vous avez rejoint {name} !",
+    "join_group_enter_code":  "Veuillez entrer un code de groupe",
+    "join_group_no_group_title":  "Pas encore dans un groupe",
+    "join_group_no_group_sub":  "Scannez un QR code ou entrez votre code de groupe pour commencer.",
+    "join_group_no_group_btn":  "Rejoindre un groupe"
 }

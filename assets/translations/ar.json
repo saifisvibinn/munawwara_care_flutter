@@ -137,6 +137,7 @@
     "group_remove_title":  "إزالة الحاج؟",
     "group_remove_cancel":  "إلغاء",
     "group_remove_confirm":  "إزالة",
+    "group_remove_body":  "هل أنت متأكد أنك تريد إزالة",
     "group_no_matches":  "لا توجد نتائج",
     "group_no_pilgrims":  "لا يوجد حجاج بعد",
     "group_search_hint":  "البحث عن الحجاج...",
@@ -245,5 +246,18 @@
     "area_add_suggestion":  "إضافة اقتراح",
     "area_suggestion_label":  "اقتراح",
     "area_by":  "بواسطة",
-    "area_navigate":  "انتقل"
+    "area_navigate":  "انتقل",
+    "join_group_title":  "مسح رمز QR",
+    "join_group_align":  "ضع رمز QR داخل الإطار للانضمام إلى مجموعتك تلقائياً.",
+    "join_group_trouble":  "هل تواجه مشكلة في المسح?",
+    "join_group_trouble_sub":  "أدخل الرمز الذي أعطاك إياه مشرف مجموعتك.",
+    "join_group_code_hint":  "مثال: HAJJ-2024-X",
+    "join_group_btn":  "انضم إلى المجموعة",
+    "join_group_where":  "أين أجد رمزي?",
+    "join_group_where_body":  "اطلب رمز المجموعة من مشرفك - يمكنه إيجاده في شاشة إدارة المجموعة.",
+    "join_group_success":  "انضممت إلى {name}!",
+    "join_group_enter_code":  "يرجى إدخال رمز المجموعة",
+    "join_group_no_group_title":  "لست في مجموعة بعد",
+    "join_group_no_group_sub":  "امسح رمز QR أو أدخل رمز المجموعة للبدء.",
+    "join_group_no_group_btn":  "انضم إلى مجموعة"
 }

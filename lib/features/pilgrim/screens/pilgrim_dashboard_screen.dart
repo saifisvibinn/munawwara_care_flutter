@@ -26,6 +26,7 @@ import '../../shared/providers/suggested_area_provider.dart';
 import '../../shared/models/suggested_area_model.dart';
 import '../providers/pilgrim_provider.dart';
 import 'group_inbox_screen.dart';
+import 'join_group_screen.dart';
 import 'pilgrim_profile_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -314,6 +315,22 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
     );
   }
 
+  // ── Join Group ──────────────────────────────────────────────────────────────
+
+  Future<void> _openJoinGroup() async {
+    final result = await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute(builder: (_) => const JoinGroupScreen()));
+    if (result == true && mounted) {
+      await ref.read(pilgrimProvider.notifier).loadDashboard();
+      final gId = ref.read(pilgrimProvider).groupInfo?.groupId;
+      if (gId != null) {
+        SocketService.emit('join_group', gId);
+        ref.read(messageProvider.notifier).fetchUnreadCount(gId);
+      }
+    }
+  }
+
   // ── Navigate to Moderator ──────────────────────────────────────────────────
 
   Future<void> _navigateToModerator(ModeratorBeacon beacon) async {
@@ -382,6 +399,7 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
                 ref.read(notificationProvider.notifier).fetchUnreadCount();
               });
         },
+        onJoinGroup: _openJoinGroup,
       ),
       _PilgrimMapTab(
         myLocation: _myLatLng,
@@ -414,6 +432,19 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
             ? AppColors.backgroundDark
             : const Color(0xfff1f5f3),
         body: IndexedStack(index: _currentTab, children: tabs),
+        floatingActionButton: SizedBox(
+          width: 56.w,
+          height: 56.w,
+          child: FloatingActionButton(
+            onPressed: _openJoinGroup,
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            shape: const CircleBorder(),
+            elevation: 6,
+            child: Icon(Symbols.qr_code_scanner, size: 26.w),
+          ),
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
         bottomNavigationBar: _BottomNav(
           currentIndex: _currentTab,
           onTap: (i) {
@@ -454,6 +485,7 @@ class _HomeTab extends StatelessWidget {
   final void Function(ModeratorBeacon) onNavigateToModerator;
   final int notificationCount;
   final VoidCallback onNotificationTap;
+  final VoidCallback onJoinGroup;
 
   const _HomeTab({
     required this.pilgrimState,
@@ -470,6 +502,7 @@ class _HomeTab extends StatelessWidget {
     required this.onNavigateToModerator,
     required this.notificationCount,
     required this.onNotificationTap,
+    required this.onJoinGroup,
   });
 
   @override
@@ -1267,121 +1300,177 @@ class _BottomNav extends StatelessWidget {
     required this.isDark,
   });
 
+  // Tabs that appear in the nav bar (skip index 2 which is the FAB slot)
+  static const _navMap = [0, 1, 3, 4];
+
   @override
   Widget build(BuildContext context) {
     final labels = [
       'tab_home'.tr(),
       'tab_map'.tr(),
-      'tab_plan'.tr(),
       'tab_chat'.tr(),
       'settings_title'.tr(),
     ];
     final icons = [
       Symbols.home,
       Symbols.map,
-      Symbols.calendar_month,
       Symbols.chat_bubble,
       Symbols.settings,
     ];
-    final badges = [0, 0, 0, unreadMessages, 0];
+    final tabIndices = _navMap;
+    final badges = [0, 0, unreadMessages, 0];
 
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 8.h),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(5, (i) {
-              final isSelected = i == currentIndex;
-              return GestureDetector(
-                onTap: () => onTap(i),
-                behavior: HitTestBehavior.opaque,
-                child: SizedBox(
-                  width: 60.w,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            width: 44.w,
-                            height: 36.h,
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? AppColors.primary.withOpacity(0.12)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(12.r),
-                            ),
-                            child: Icon(
-                              icons[i],
-                              size: 22.w,
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : AppColors.textMutedLight,
-                            ),
+    return BottomAppBar(
+      color: isDark ? AppColors.surfaceDark : Colors.white,
+      shape: const CircularNotchedRectangle(),
+      notchMargin: 8,
+      padding: EdgeInsets.zero,
+      surfaceTintColor: Colors.transparent,
+      elevation: 8,
+      height: 66.h,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          // Left two tabs
+          ...List.generate(2, (slot) {
+            final i = tabIndices[slot];
+            final isSelected = i == currentIndex;
+            return GestureDetector(
+              onTap: () => onTap(i),
+              behavior: HitTestBehavior.opaque,
+              child: SizedBox(
+                width: 60.w,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 44.w,
+                      height: 32.h,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.primary.withOpacity(0.12)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                      child: Icon(
+                        icons[slot],
+                        size: 22.w,
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.textMutedLight,
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      labels[slot],
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 10.sp,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.textMutedLight,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+
+          // Center gap for FAB
+          SizedBox(width: 60.w),
+
+          // Right two tabs (chat + settings)
+          ...List.generate(2, (slot) {
+            final listSlot = slot + 2; // slots 2 & 3 in our lists
+            final i = tabIndices[listSlot];
+            final isSelected = i == currentIndex;
+            return GestureDetector(
+              onTap: () => onTap(i),
+              behavior: HitTestBehavior.opaque,
+              child: SizedBox(
+                width: 60.w,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 44.w,
+                          height: 32.h,
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppColors.primary.withOpacity(0.12)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12.r),
                           ),
-                          if (badges[i] > 0)
-                            Positioned(
-                              top: -2,
-                              right: -2,
-                              child: Container(
-                                padding: EdgeInsets.all(3.w),
-                                decoration: const BoxDecoration(
-                                  color: Colors.orange,
-                                  shape: BoxShape.circle,
+                          child: Icon(
+                            icons[listSlot],
+                            size: 22.w,
+                            color: isSelected
+                                ? AppColors.primary
+                                : AppColors.textMutedLight,
+                          ),
+                        ),
+                        if (badges[listSlot] > 0)
+                          Positioned(
+                            top: -2,
+                            right: -2,
+                            child: Container(
+                              padding: EdgeInsets.all(3.w),
+                              decoration: const BoxDecoration(
+                                color: Colors.orange,
+                                shape: BoxShape.circle,
+                              ),
+                              constraints: BoxConstraints(
+                                minWidth: 14.w,
+                                minHeight: 14.w,
+                              ),
+                              child: Text(
+                                badges[listSlot] > 9
+                                    ? '9+'
+                                    : '${badges[listSlot]}',
+                                style: TextStyle(
+                                  fontSize: 9.sp,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
                                 ),
-                                constraints: BoxConstraints(
-                                  minWidth: 14.w,
-                                  minHeight: 14.w,
-                                ),
-                                child: Text(
-                                  badges[i] > 9 ? '9+' : '${badges[i]}',
-                                  style: TextStyle(
-                                    fontSize: 9.sp,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
+                                textAlign: TextAlign.center,
                               ),
                             ),
-                        ],
+                          ),
+                      ],
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      labels[listSlot],
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 10.sp,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.textMutedLight,
                       ),
-                      SizedBox(height: 2.h),
-                      Text(
-                        labels[i],
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 11.sp,
-                          fontWeight: isSelected
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                          color: isSelected
-                              ? AppColors.primary
-                              : AppColors.textMutedLight,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-              );
-            }),
-          ),
-        ),
+              ),
+            );
+          }),
+        ],
       ),
     );
   }

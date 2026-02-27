@@ -137,6 +137,7 @@
     "group_remove_title":  "Hapus Jamaah?",
     "group_remove_cancel":  "Batal",
     "group_remove_confirm":  "Hapus",
+    "group_remove_body":  "Apakah Anda yakin ingin menghapus",
     "group_no_matches":  "Tidak ada hasil",
     "group_no_pilgrims":  "Belum ada jamaah",
     "group_search_hint":  "Cari jamaah...",
@@ -245,5 +246,18 @@
     "area_add_suggestion":  "Tambah Saran",
     "area_suggestion_label":  "Saran",
     "area_by":  "Oleh",
-    "area_navigate":  "Navigasi"
+    "area_navigate":  "Navigasi",
+    "join_group_title":  "Pindai Kode QR",
+    "join_group_align":  "Sejajarkan kode QR dalam bingkai untuk bergabung ke grup Anda secara otomatis.",
+    "join_group_trouble":  "Kesulitan memindai?",
+    "join_group_trouble_sub":  "Masukkan kode alfanumerik yang diberikan oleh moderator grup Anda.",
+    "join_group_code_hint":  "CONTOH: HAJJ-2024-X",
+    "join_group_btn":  "Bergabung ke Grup",
+    "join_group_where":  "Di mana saya menemukan kode saya?",
+    "join_group_where_body":  "Minta kode grup kepada moderator Anda — mereka dapat menemukannya di layar manajemen grup.",
+    "join_group_success":  "Anda telah bergabung dengan {name}!",
+    "join_group_enter_code":  "Masukkan kode grup",
+    "join_group_no_group_title":  "Belum bergabung grup",
+    "join_group_no_group_sub":  "Pindai kode QR atau masukkan kode grup Anda untuk memulai.",
+    "join_group_no_group_btn":  "Bergabung ke Grup"
 }
