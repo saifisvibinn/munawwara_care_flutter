@@ -70,22 +70,31 @@ class AuthNotifier extends Notifier<AuthState> {
 
   // ── Restore session on startup ──────────────────────────────────────────────
   Future<void> _restoreSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('auth_token');
-    final role = prefs.getString('user_role');
-    final userId = prefs.getString('user_id');
-    final fullName = prefs.getString('user_full_name');
+    try {
+      print('AuthNotifier: restoring session');
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      final role = prefs.getString('user_role');
+      final userId = prefs.getString('user_id');
+      final fullName = prefs.getString('user_full_name');
 
-    if (token != null) {
-      ApiService.dio.options.headers['Authorization'] = 'Bearer $token';
-      state = AuthState(
-        isRestoringSession: false,
-        token: token,
-        role: role,
-        userId: userId,
-        fullName: fullName,
-      );
-    } else {
+      if (token != null) {
+        ApiService.dio.options.headers['Authorization'] = 'Bearer $token';
+        state = AuthState(
+          isRestoringSession: false,
+          token: token,
+          role: role,
+          userId: userId,
+          fullName: fullName,
+        );
+      } else {
+        state = const AuthState(isRestoringSession: false);
+      }
+      print('AuthNotifier: restore complete');
+    } catch (e, st) {
+      // If shared preferences fails for any reason, we still want to clear the
+      // restoring flag so the UI can proceed. Log the error to console.
+      print('AuthNotifier restoreSession error: $e\n$st');
       state = const AuthState(isRestoringSession: false);
     }
   }

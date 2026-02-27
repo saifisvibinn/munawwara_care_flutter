@@ -85,6 +85,10 @@ flutter:
   assets:
     - assets/translations/
     - assets/fonts/
+    - assets/static/icon.png
+    - assets/static/logo.jpeg
+    - assets/static/splash-screen.png
+    - assets/static/urgent.wav
     - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see

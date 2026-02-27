@@ -19,34 +19,46 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
+    print('SplashScreen initState');
     _navigate();
   }
 
   Future<void> _navigate() async {
     // Wait for _restoreSession to finish (isRestoringSession → false) with a
-    // minimum splash display time of 1.5 s for a polished UX.
-    await Future.wait([
-      Future.doWhile(() async {
-        await Future.delayed(const Duration(milliseconds: 50));
-        return ref.read(authProvider).isRestoringSession;
-      }),
-      Future.delayed(const Duration(milliseconds: 1500)),
-    ]);
+    // minimum splash display time of 1.5 s for a polished UX. Add a hard
+    // timeout so we don't stay stuck if prefs/restore hangs.
+    print('SplashScreen waiting for auth restore');
+    try {
+      await Future.any([
+        Future.wait([
+          Future.doWhile(() async {
+            await Future.delayed(const Duration(milliseconds: 50));
+            return ref.read(authProvider).isRestoringSession;
+          }),
+          Future.delayed(const Duration(milliseconds: 1500)),
+        ]),
+        Future.delayed(const Duration(seconds: 5)),
+      ]);
+    } catch (_) {
+      // ignore
+    }
     if (!mounted) return;
     final auth = ref.read(authProvider);
     if (auth.isAuthenticated) {
-      context.go(
-        auth.role == 'moderator'
-            ? '/moderator-dashboard'
-            : '/pilgrim-dashboard',
-      );
+      final route = auth.role == 'moderator'
+          ? '/moderator-dashboard'
+          : '/pilgrim-dashboard';
+      print('SplashScreen nav to authenticated $route');
+      context.go(route);
     } else {
+      print('SplashScreen nav to login');
       context.go('/login');
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    print('SplashScreen build');
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -110,7 +122,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
               children: [
                 const Spacer(flex: 3),
 
-                // Logo Container
+                // Logo Container (uses static image if available)
                 Center(
                   child: Container(
                     width: 140.w,
@@ -135,11 +147,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                       ],
                     ),
                     child: Center(
-                      child: Icon(
-                        Symbols.mosque,
-                        size: 80.w,
-                        color: AppColors.primary,
-                        weight: 400,
+                      child: Image.asset(
+                        'assets/static/logo.jpeg',
+                        width: 80.w,
+                        height: 80.w,
+                        fit: BoxFit.contain,
                       ),
                     ),
                   ),
