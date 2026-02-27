@@ -129,9 +129,11 @@ class _ModeratorGroupMapScreenState
   }
 
   Future<void> _broadcastSOS() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
+        backgroundColor: isDark ? AppColors.surfaceDark : null,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16.r),
         ),
@@ -146,7 +148,7 @@ class _ModeratorGroupMapScreenState
         ),
         content: Text(
           'This will send an urgent SOS message to all pilgrims in ${widget.group.groupName}.',
-          style: TextStyle(fontFamily: 'Lexend', fontSize: 14.sp),
+          style: TextStyle(fontFamily: 'Lexend', fontSize: 14.sp, color: isDark ? Colors.white70 : null),
         ),
         actions: [
           TextButton(
@@ -211,6 +213,7 @@ class _ModeratorGroupMapScreenState
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final pilgrims = widget.group.pilgrims;
     final locatedPilgrims = pilgrims.where((p) => p.hasLocation).toList();
 
@@ -289,7 +292,7 @@ class _ModeratorGroupMapScreenState
                         width: 42.w,
                         height: 42.w,
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: isDark ? AppColors.surfaceDark : Colors.white,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
@@ -302,7 +305,7 @@ class _ModeratorGroupMapScreenState
                         child: Icon(
                           Symbols.arrow_back,
                           size: 20.w,
-                          color: AppColors.textDark,
+                          color: isDark ? Colors.white : AppColors.textDark,
                         ),
                       ),
                     ),
@@ -315,7 +318,7 @@ class _ModeratorGroupMapScreenState
                           vertical: 10.h,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: isDark ? AppColors.surfaceDark : Colors.white,
                           borderRadius: BorderRadius.circular(14.r),
                           boxShadow: [
                             BoxShadow(
@@ -353,7 +356,7 @@ class _ModeratorGroupMapScreenState
                                       fontFamily: 'Lexend',
                                       fontWeight: FontWeight.w700,
                                       fontSize: 13.sp,
-                                      color: AppColors.textDark,
+                                      color: isDark ? Colors.white : AppColors.textDark,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -454,7 +457,7 @@ class _ModeratorGroupMapScreenState
             snapSizes: const [0.1, 0.28, 0.7],
             builder: (ctx, scrollController) => Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? AppColors.surfaceDark : Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
                 boxShadow: [
                   BoxShadow(
@@ -473,7 +476,7 @@ class _ModeratorGroupMapScreenState
                       width: 36.w,
                       height: 4.h,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE2E8F0),
+                        color: isDark ? Colors.white24 : const Color(0xFFE2E8F0),
                         borderRadius: BorderRadius.circular(2.r),
                       ),
                     ),
@@ -489,7 +492,7 @@ class _ModeratorGroupMapScreenState
                             fontFamily: 'Lexend',
                             fontWeight: FontWeight.w700,
                             fontSize: 15.sp,
-                            color: AppColors.textDark,
+                            color: isDark ? Colors.white : AppColors.textDark,
                           ),
                         ),
                         const Spacer(),
@@ -500,10 +503,10 @@ class _ModeratorGroupMapScreenState
                               vertical: 4.h,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFFF1F2),
+                              color: isDark ? const Color(0xFF3A1010) : const Color(0xFFFFF1F2),
                               borderRadius: BorderRadius.circular(100.r),
                               border: Border.all(
-                                color: const Color(0xFFFFE4E6),
+                                color: isDark ? const Color(0xFF5C1515) : const Color(0xFFFFE4E6),
                               ),
                             ),
                             child: Row(
@@ -537,7 +540,7 @@ class _ModeratorGroupMapScreenState
                     child: Container(
                       height: 40.h,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF0F0F8),
+                        color: isDark ? AppColors.backgroundDark : const Color(0xFFF0F0F8),
                         borderRadius: BorderRadius.circular(12.r),
                       ),
                       child: TextField(
@@ -545,7 +548,7 @@ class _ModeratorGroupMapScreenState
                         style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 13.sp,
-                          color: AppColors.textDark,
+                          color: isDark ? Colors.white : AppColors.textDark,
                         ),
                         decoration: InputDecoration(
                           hintText: 'Search pilgrims...',
@@ -668,13 +671,14 @@ class _MapFab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         width: 44.w,
         height: 44.w,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? AppColors.surfaceDark : Colors.white,
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
@@ -684,7 +688,7 @@ class _MapFab extends StatelessWidget {
             ),
           ],
         ),
-        child: Icon(icon, size: 20.w, color: AppColors.textDark),
+        child: Icon(icon, size: 20.w, color: isDark ? Colors.white : AppColors.textDark),
       ),
     );
   }
@@ -700,6 +704,7 @@ class _PilgrimListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final battColor = switch (pilgrim.batteryStatus) {
       BatteryStatus.good => const Color(0xFF16A34A),
       BatteryStatus.medium => const Color(0xFFF59E0B),
@@ -713,12 +718,12 @@ class _PilgrimListTile extends StatelessWidget {
         padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
         decoration: BoxDecoration(
           color: pilgrim.hasSOS
-              ? const Color(0xFFFFF1F2)
-              : const Color(0xFFF0F0F8),
+              ? (isDark ? const Color(0xFF3A1010) : const Color(0xFFFFF1F2))
+              : isDark ? AppColors.backgroundDark : const Color(0xFFF0F0F8),
           borderRadius: BorderRadius.circular(14.r),
           border: Border.all(
             color: pilgrim.hasSOS
-                ? const Color(0xFFFFE4E6)
+                ? (isDark ? const Color(0xFF5C1515) : const Color(0xFFFFE4E6))
                 : Colors.transparent,
           ),
         ),
@@ -765,7 +770,7 @@ class _PilgrimListTile extends StatelessWidget {
                       fontFamily: 'Lexend',
                       fontWeight: FontWeight.w600,
                       fontSize: 13.sp,
-                      color: AppColors.textDark,
+                      color: isDark ? Colors.white : AppColors.textDark,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

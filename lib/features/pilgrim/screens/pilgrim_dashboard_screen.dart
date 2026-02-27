@@ -830,7 +830,7 @@ class _HomeTab extends StatelessWidget {
                   padding: EdgeInsets.fromLTRB(20.w, 0, 20.w, 24.h),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xff1e2a24) : Colors.white,
+                      color: isDark ? AppColors.surfaceDark : Colors.white,
                       borderRadius: BorderRadius.circular(20.r),
                       boxShadow: [
                         BoxShadow(
@@ -1504,6 +1504,7 @@ class _PilgrimMapTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final group = pilgrimState.groupInfo;
 
     return Stack(
@@ -1607,7 +1608,7 @@ class _PilgrimMapTab extends StatelessWidget {
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: isDark ? AppColors.surfaceDark : Colors.white,
                   borderRadius: BorderRadius.circular(16.r),
                   boxShadow: [
                     BoxShadow(
@@ -1636,7 +1637,7 @@ class _PilgrimMapTab extends StatelessWidget {
                         fontFamily: 'Lexend',
                         fontWeight: FontWeight.w700,
                         fontSize: 13.sp,
-                        color: AppColors.textDark,
+                        color: isDark ? Colors.white : AppColors.textDark,
                       ),
                     ),
                   ],
@@ -1659,7 +1660,7 @@ class _PilgrimMapTab extends StatelessWidget {
               width: 48.w,
               height: 48.w,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? AppColors.surfaceDark : Colors.white,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
@@ -1671,7 +1672,7 @@ class _PilgrimMapTab extends StatelessWidget {
               ),
               child: Icon(
                 Symbols.my_location,
-                color: AppColors.textDark,
+                color: isDark ? Colors.white : AppColors.textDark,
                 size: 22.w,
               ),
             ),
@@ -1940,13 +1941,14 @@ class _SuggestionsCycleButtonState extends State<_SuggestionsCycleButton> {
 void _showAreaInfo(BuildContext context, SuggestedArea area) {
   final isMeetpoint = area.isMeetpoint;
   final color = isMeetpoint ? const Color(0xFFDC2626) : AppColors.primary;
+  final isDark = Theme.of(context).brightness == Brightness.dark;
 
   showModalBottomSheet(
     context: context,
     backgroundColor: Colors.transparent,
     builder: (ctx) => Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.surfaceDark : Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
       ),
       padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 32.h),
@@ -1957,7 +1959,7 @@ void _showAreaInfo(BuildContext context, SuggestedArea area) {
             width: 40.w,
             height: 4.h,
             decoration: BoxDecoration(
-              color: Colors.grey.shade300,
+              color: isDark ? Colors.white24 : Colors.grey.shade300,
               borderRadius: BorderRadius.circular(2.r),
             ),
           ),
@@ -2002,7 +2004,7 @@ void _showAreaInfo(BuildContext context, SuggestedArea area) {
               fontFamily: 'Lexend',
               fontWeight: FontWeight.w700,
               fontSize: 17.sp,
-              color: AppColors.textDark,
+              color: isDark ? Colors.white : AppColors.textDark,
             ),
             textAlign: TextAlign.center,
           ),

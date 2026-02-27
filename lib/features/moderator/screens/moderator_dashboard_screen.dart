@@ -807,11 +807,17 @@ class _GroupCard extends ConsumerWidget {
 
                   // View on Map link
                   GestureDetector(
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => ModeratorGroupMapScreen(group: group),
-                      ),
-                    ),
+                    onTap: () {
+                      final userId = ref.read(authProvider).userId ?? '';
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => GroupManagementScreen(
+                            groupId: group.id,
+                            currentUserId: userId,
+                          ),
+                        ),
+                      );
+                    },
                     child: Row(
                       children: [
                         Text(
