@@ -108,6 +108,8 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
           role: auth.role ?? 'pilgrim',
         );
         ref.read(callProvider.notifier).reRegisterListeners();
+        // Check if there's a pending call accepted from native call screen
+        ref.read(callProvider.notifier).checkPendingAcceptedCall();
         // Join group socket room so we receive group-scoped events
         final gId = ref.read(pilgrimProvider).groupInfo?.groupId;
         if (gId != null) SocketService.emit('join_group', gId);

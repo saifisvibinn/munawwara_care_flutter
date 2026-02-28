@@ -79,7 +79,7 @@ class SuggestedAreaNotifier extends Notifier<SuggestedAreaState> {
     String areaType = 'suggestion',
   }) async {
     try {
-      final res = await ApiService.dio.post(
+      await ApiService.dio.post(
         '/groups/$groupId/suggested-areas',
         data: {
           'name': name,

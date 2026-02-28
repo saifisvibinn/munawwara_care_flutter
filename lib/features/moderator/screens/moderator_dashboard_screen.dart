@@ -115,6 +115,8 @@ class _ModeratorDashboardScreenState
         );
         // Make sure call provider's listeners are registered
         ref.read(callProvider.notifier).reRegisterListeners();
+        // Check if there's a pending call accepted from native call screen
+        ref.read(callProvider.notifier).checkPendingAcceptedCall();
         // Fetch unread notification count for badge
         ref.read(notificationProvider.notifier).fetchUnreadCount();
         // Join all group rooms so we receive SOS events

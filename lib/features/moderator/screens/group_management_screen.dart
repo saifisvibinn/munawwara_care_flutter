@@ -3073,25 +3073,15 @@ class _MarkerTailPainter extends CustomPainter {
 class _CircleButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
-  final Color? backgroundColor;
-  final Color? iconColor;
-  final double? size;
 
-  const _CircleButton({
-    required this.icon,
-    required this.onTap,
-    this.backgroundColor,
-    this.iconColor,
-    this.size,
-  });
+  const _CircleButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg =
-        backgroundColor ?? (isDark ? AppColors.surfaceDark : Colors.white);
-    final fg = iconColor ?? (isDark ? Colors.white : AppColors.textDark);
-    final sz = size ?? 42.w;
+    final bg = isDark ? AppColors.surfaceDark : Colors.white;
+    final fg = isDark ? Colors.white : AppColors.textDark;
+    final sz = 42.w;
     return GestureDetector(
       onTap: onTap,
       child: Container(

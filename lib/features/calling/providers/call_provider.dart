@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/services/socket_service.dart';
+import '../../../core/services/callkit_service.dart';
+import '../../../main.dart' show consumePendingAcceptedCall;
 
 /// Read at first use (after dotenv.load has run in main).
 String get _agoraAppId => dotenv.env['AGORA_APP_ID'] ?? '';
@@ -183,6 +185,8 @@ class CallNotifier extends Notifier<CallState> {
     if (state.remoteUserId != null) {
       SocketService.emit('call-declined', {'to': state.remoteUserId});
     }
+    // Dismiss native call screen
+    CallKitService.instance.endCurrentCall();
     _cleanup();
     state = const CallState(status: CallStatus.ended, endReason: 'declined');
     _scheduleReset();
@@ -193,9 +197,51 @@ class CallNotifier extends Notifier<CallState> {
     if (state.remoteUserId != null) {
       SocketService.emit('call-end', {'to': state.remoteUserId});
     }
+    // Dismiss native call screen
+    CallKitService.instance.endCurrentCall();
     _cleanup();
     state = const CallState(status: CallStatus.ended, endReason: 'ended');
     _scheduleReset();
+  }
+
+  /// Accept a call that arrived via FCM (background/terminated state).
+  /// Called when the user taps "Accept" on the native call screen and the
+  /// app was not running (so no socket call-offer was received).
+  Future<void> acceptCallFromFcm({
+    required String callerId,
+    required String callerName,
+    required String channelName,
+  }) async {
+    if (state.isInCall) return;
+
+    debugPrint(
+      '[CallProvider] Accepting FCM call from $callerName on $channelName',
+    );
+
+    _pendingChannelName = channelName;
+    _pendingFromId = callerId;
+
+    state = CallState(
+      status: CallStatus.ringing,
+      remoteUserId: callerId,
+      remoteUserName: callerName,
+    );
+
+    await acceptCall();
+  }
+
+  /// Check for calls accepted from the native call screen while app was
+  /// in background. Call this on dashboard init.
+  Future<void> checkPendingAcceptedCall() async {
+    final pending = consumePendingAcceptedCall();
+    if (pending != null && pending['channelName']?.isNotEmpty == true) {
+      debugPrint('[CallProvider] Found pending accepted call: $pending');
+      await acceptCallFromFcm(
+        callerId: pending['callerId'] ?? '',
+        callerName: pending['callerName'] ?? 'Unknown',
+        channelName: pending['channelName'] ?? '',
+      );
+    }
   }
 
   void toggleMute() {
@@ -240,10 +286,20 @@ class CallNotifier extends Notifier<CallState> {
 
     final callerInfo = payload['callerInfo'] as Map?;
     final callerName = callerInfo?['name'] as String? ?? 'Unknown';
+    final callerRole = callerInfo?['role'] as String?;
 
     debugPrint(
       '[CallProvider] ✓ Incoming call from $callerName ($_pendingFromId) on channel $channelName',
     );
+
+    // Show NATIVE incoming call screen (like WhatsApp)
+    CallKitService.instance.showIncomingCall(
+      callerId: _pendingFromId ?? '',
+      callerName: callerName,
+      channelName: channelName,
+      callerRole: callerRole,
+    );
+
     state = CallState(
       status: CallStatus.ringing,
       remoteUserId: _pendingFromId,
@@ -257,24 +313,28 @@ class CallNotifier extends Notifier<CallState> {
   }
 
   void _onRemoteDecline(dynamic _) {
+    CallKitService.instance.endCurrentCall();
     _cleanup();
     state = const CallState(status: CallStatus.ended, endReason: 'declined');
     _scheduleReset();
   }
 
   void _onRemoteEnd(dynamic _) {
+    CallKitService.instance.endCurrentCall();
     _cleanup();
     state = const CallState(status: CallStatus.ended, endReason: 'ended');
     _scheduleReset();
   }
 
   void _onRemoteCancel(dynamic _) {
+    CallKitService.instance.endCurrentCall();
     _cleanup();
     state = const CallState(status: CallStatus.ended, endReason: 'cancelled');
     _scheduleReset();
   }
 
   void _onRemoteBusy(dynamic _) {
+    CallKitService.instance.endCurrentCall();
     _cleanup();
     state = const CallState(status: CallStatus.ended, endReason: 'busy');
     _scheduleReset();

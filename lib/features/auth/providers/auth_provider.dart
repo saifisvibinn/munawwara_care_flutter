@@ -254,6 +254,19 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
+  // ── Update FCM Token ────────────────────────────────────────────────────────
+  Future<void> updateFcmToken(String fcmToken) async {
+    try {
+      await ApiService.dio.put(
+        '/auth/fcm-token',
+        data: {'fcm_token': fcmToken},
+      );
+      print('✅ FCM token registered with backend');
+    } catch (e) {
+      print('⚠️ Failed to register FCM token: $e');
+    }
+  }
+
   // ── Logout ──────────────────────────────────────────────────────────────────
   Future<void> logout() async {
     await ApiService.clearAuthToken();
