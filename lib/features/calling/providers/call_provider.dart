@@ -2,13 +2,16 @@ import 'dart:async';
 
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/services/socket_service.dart';
 import '../../../core/services/callkit_service.dart';
-import '../../../main.dart' show consumePendingAcceptedCall;
+import '../../../core/router/app_router.dart';
+import '../../../main.dart' show consumePendingAcceptedCall, isNavigatingToCall;
+import '../screens/voice_call_screen.dart';
 
 /// Read at first use (after dotenv.load has run in main).
 String get _agoraAppId => dotenv.env['AGORA_APP_ID'] ?? '';
@@ -81,6 +84,9 @@ class CallNotifier extends Notifier<CallState> {
   String? _pendingFromId;
   Timer? _callTimer;
 
+  /// Timestamp of the last processed call-offer — reject rapid duplicates.
+  DateTime? _lastOfferTime;
+
   @override
   CallState build() {
     _registerSocketListeners();
@@ -141,7 +147,12 @@ class CallNotifier extends Notifier<CallState> {
       });
     } catch (e) {
       _cleanup();
-      state = const CallState(status: CallStatus.ended, endReason: 'error');
+      state = CallState(
+        status: CallStatus.ended,
+        endReason: 'error',
+        remoteUserId: state.remoteUserId,
+        remoteUserName: state.remoteUserName,
+      );
       _scheduleReset();
     }
   }
@@ -175,7 +186,12 @@ class CallNotifier extends Notifier<CallState> {
       _startTimer();
     } catch (e) {
       _cleanup();
-      state = const CallState(status: CallStatus.ended, endReason: 'error');
+      state = CallState(
+        status: CallStatus.ended,
+        endReason: 'error',
+        remoteUserId: state.remoteUserId,
+        remoteUserName: state.remoteUserName,
+      );
       _scheduleReset();
     }
   }
@@ -188,7 +204,12 @@ class CallNotifier extends Notifier<CallState> {
     // Dismiss native call screen
     CallKitService.instance.endCurrentCall();
     _cleanup();
-    state = const CallState(status: CallStatus.ended, endReason: 'declined');
+    state = CallState(
+      status: CallStatus.ended,
+      endReason: 'declined',
+      remoteUserId: state.remoteUserId,
+      remoteUserName: state.remoteUserName,
+    );
     _scheduleReset();
   }
 
@@ -200,7 +221,12 @@ class CallNotifier extends Notifier<CallState> {
     // Dismiss native call screen
     CallKitService.instance.endCurrentCall();
     _cleanup();
-    state = const CallState(status: CallStatus.ended, endReason: 'ended');
+    state = CallState(
+      status: CallStatus.ended,
+      endReason: 'ended',
+      remoteUserId: state.remoteUserId,
+      remoteUserName: state.remoteUserName,
+    );
     _scheduleReset();
   }
 
@@ -241,6 +267,19 @@ class CallNotifier extends Notifier<CallState> {
         callerName: pending['callerName'] ?? 'Unknown',
         channelName: pending['channelName'] ?? '',
       );
+      // Navigate to VoiceCallScreen (the main.dart handler might already
+      // be retrying, but if it gave up this is the reliable fallback).
+      if (!isNavigatingToCall && !VoiceCallScreen.isActive) {
+        Future.delayed(const Duration(milliseconds: 200), () {
+          if (VoiceCallScreen.isActive) return;
+          final nav = AppRouter.navigatorKey.currentState;
+          if (nav != null) {
+            nav.push(
+              MaterialPageRoute(builder: (_) => const VoiceCallScreen()),
+            );
+          }
+        });
+      }
     }
   }
 
@@ -270,7 +309,9 @@ class CallNotifier extends Notifier<CallState> {
         : Map<String, dynamic>.from(data as Map? ?? {});
 
     if (state.isInCall) {
-      debugPrint('[CallProvider] Already in call – sending busy');
+      debugPrint(
+        '[CallProvider] Already in call (status=${state.status}) – sending busy',
+      );
       SocketService.emit('call-busy', {'to': payload['from']});
       return;
     }
@@ -280,6 +321,23 @@ class CallNotifier extends Notifier<CallState> {
       debugPrint('[CallProvider] ✗ call-offer missing channelName, ignored');
       return;
     }
+
+    // Duplicate guard: if we already have this exact channel pending, skip.
+    if (_pendingChannelName == channelName) {
+      debugPrint(
+        '[CallProvider] ✗ duplicate call-offer for same channel, ignored',
+      );
+      return;
+    }
+
+    // Timestamp guard: reject call-offer within 5 s of the last one.
+    final now = DateTime.now();
+    if (_lastOfferTime != null &&
+        now.difference(_lastOfferTime!).inSeconds < 5) {
+      debugPrint('[CallProvider] ✗ call-offer within 5 s window, ignored');
+      return;
+    }
+    _lastOfferTime = now;
 
     _pendingChannelName = channelName;
     _pendingFromId = payload['from'] as String?;
@@ -314,29 +372,57 @@ class CallNotifier extends Notifier<CallState> {
 
   void _onRemoteDecline(dynamic _) {
     CallKitService.instance.endCurrentCall();
+    final prevName = state.remoteUserName;
+    final prevId = state.remoteUserId;
     _cleanup();
-    state = const CallState(status: CallStatus.ended, endReason: 'declined');
+    state = CallState(
+      status: CallStatus.ended,
+      endReason: 'declined',
+      remoteUserId: prevId,
+      remoteUserName: prevName,
+    );
     _scheduleReset();
   }
 
   void _onRemoteEnd(dynamic _) {
     CallKitService.instance.endCurrentCall();
+    final prevName = state.remoteUserName;
+    final prevId = state.remoteUserId;
     _cleanup();
-    state = const CallState(status: CallStatus.ended, endReason: 'ended');
+    state = CallState(
+      status: CallStatus.ended,
+      endReason: 'ended',
+      remoteUserId: prevId,
+      remoteUserName: prevName,
+    );
     _scheduleReset();
   }
 
   void _onRemoteCancel(dynamic _) {
     CallKitService.instance.endCurrentCall();
+    final prevName = state.remoteUserName;
+    final prevId = state.remoteUserId;
     _cleanup();
-    state = const CallState(status: CallStatus.ended, endReason: 'cancelled');
+    state = CallState(
+      status: CallStatus.ended,
+      endReason: 'cancelled',
+      remoteUserId: prevId,
+      remoteUserName: prevName,
+    );
     _scheduleReset();
   }
 
   void _onRemoteBusy(dynamic _) {
     CallKitService.instance.endCurrentCall();
+    final prevName = state.remoteUserName;
+    final prevId = state.remoteUserId;
     _cleanup();
-    state = const CallState(status: CallStatus.ended, endReason: 'busy');
+    state = CallState(
+      status: CallStatus.ended,
+      endReason: 'busy',
+      remoteUserId: prevId,
+      remoteUserName: prevName,
+    );
     _scheduleReset();
   }
 

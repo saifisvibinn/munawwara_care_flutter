@@ -18,7 +18,8 @@ import '../../../core/services/socket_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../calling/providers/call_provider.dart';
-import '../../calling/screens/incoming_call_screen.dart';
+import '../../calling/screens/voice_call_screen.dart';
+import '../../../main.dart' show isNavigatingToCall;
 import '../../notifications/providers/notification_provider.dart';
 import '../../notifications/screens/alerts_tab.dart';
 import '../../shared/providers/message_provider.dart';
@@ -84,12 +85,6 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     )..repeat(reverse: true);
-
-    // Eagerly initialise callProvider so its socket listeners are registered
-    // in SocketService._pendingListeners BEFORE the socket is connected below.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(callProvider.notifier).reRegisterListeners();
-    });
 
     // Load data after first frame so the provider is ready
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -179,6 +174,12 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
           if (!mounted) return;
           ref.read(notificationProvider.notifier).refetch();
         });
+
+        // Listen for missed calls — refresh notifications so badge + list update
+        SocketService.on('missed-call-received', (_) {
+          if (!mounted) return;
+          ref.read(notificationProvider.notifier).refetch();
+        });
       }
       // Fetch notification badge count
       ref.read(notificationProvider.notifier).fetchUnreadCount();
@@ -205,6 +206,7 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
     SocketService.off('area_added');
     SocketService.off('area_deleted');
     SocketService.off('notification_refresh');
+    SocketService.off('missed-call-received');
     SocketService.offConnected(_onSocketConnected);
     super.dispose();
   }
@@ -369,19 +371,21 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
     final pilgrimState = ref.watch(pilgrimProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Show incoming call screen when a call arrives
-    ref.listen(callProvider, (_, next) {
-      if (next.status == CallStatus.ringing && mounted) {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            fullscreenDialog: true,
-            builder: (_) => const IncomingCallScreen(),
-          ),
-        );
+    final notifCount = ref.watch(notificationProvider).unreadCount;
+
+    // Fallback: if an incoming call was accepted and we're connected,
+    // navigate to VoiceCallScreen from here.
+    ref.listen(callProvider, (prev, next) {
+      if (next.status == CallStatus.connected &&
+          prev?.status == CallStatus.ringing &&
+          mounted &&
+          !isNavigatingToCall &&
+          !VoiceCallScreen.isActive) {
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const VoiceCallScreen()));
       }
     });
-
-    final notifCount = ref.watch(notificationProvider).unreadCount;
 
     final tabs = [
       _HomeTab(

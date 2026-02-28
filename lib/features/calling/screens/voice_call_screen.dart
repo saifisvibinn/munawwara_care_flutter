@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,6 +17,9 @@ import '../providers/call_provider.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 class VoiceCallScreen extends ConsumerStatefulWidget {
+  /// Prevents duplicate instances from being pushed onto the stack.
+  static bool isActive = false;
+
   const VoiceCallScreen({super.key});
 
   @override
@@ -22,18 +27,49 @@ class VoiceCallScreen extends ConsumerStatefulWidget {
 }
 
 class _VoiceCallScreenState extends ConsumerState<VoiceCallScreen> {
+  /// Cached caller name so it survives provider state resets.
+  String? _cachedName;
+  Timer? _autoPopTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    VoiceCallScreen.isActive = true;
+  }
+
+  @override
+  void dispose() {
+    _autoPopTimer?.cancel();
+    VoiceCallScreen.isActive = false;
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final call = ref.watch(callProvider);
 
-    // Pop when the provider resets back to idle (after ended+delay)
+    // Cache the name so it survives when provider resets to idle
+    if (call.remoteUserName != null && call.remoteUserName!.isNotEmpty) {
+      _cachedName = call.remoteUserName;
+    }
+
+    // Auto-pop 2 s after 'ended' so user sees the end reason with correct name
     ref.listen(callProvider, (prev, next) {
+      if (next.status == CallStatus.ended &&
+          prev?.status != CallStatus.ended &&
+          mounted) {
+        _autoPopTimer?.cancel();
+        _autoPopTimer = Timer(const Duration(seconds: 2), () {
+          if (mounted) Navigator.of(context).maybePop();
+        });
+      }
+      // Safety net: also pop on idle
       if (next.status == CallStatus.idle && mounted) {
         Navigator.of(context).maybePop();
       }
     });
 
-    final name = call.remoteUserName ?? 'Unknown';
+    final name = _cachedName ?? call.remoteUserName ?? 'Unknown';
     final initials = name
         .trim()
         .split(' ')

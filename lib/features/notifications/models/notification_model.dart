@@ -74,6 +74,8 @@ class AppNotification {
         return Symbols.pin_drop;
       case 'meetpoint':
         return Symbols.crisis_alert;
+      case 'missed_call':
+        return Symbols.phone_missed;
       default:
         return Symbols.notifications;
     }
@@ -97,6 +99,8 @@ class AppNotification {
       case 'suggested_area':
         return AppColors.primary;
       case 'meetpoint':
+        return const Color(0xFFEF4444);
+      case 'missed_call':
         return const Color(0xFFEF4444);
       default:
         return const Color(0xFF64748B);
@@ -125,6 +129,8 @@ class AppNotification {
         return 'Suggested Area';
       case 'meetpoint':
         return 'Meetpoint';
+      case 'missed_call':
+        return 'Missed Call';
       default:
         return 'Notification';
     }

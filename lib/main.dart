@@ -15,13 +15,23 @@ import 'core/theme/app_theme.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/env/env_check.dart';
 import 'core/services/notification_service.dart';
+import 'core/router/app_router.dart' show AppRouter;
 import 'features/auth/providers/auth_provider.dart';
+import 'features/calling/providers/call_provider.dart';
+import 'features/calling/screens/voice_call_screen.dart';
 
 // Global FCM token
 String? _globalFcmToken;
 
-// Global navigator key for navigating from CallKit callbacks
-final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+// Global Riverpod container (set in main, used by CallKit listeners)
+ProviderContainer? _globalContainer;
+
+// Guard: prevent pushing VoiceCallScreen more than once
+bool _navigatingToCall = false;
+
+/// Whether a VoiceCallScreen navigation is in progress.
+/// Dashboards check this to avoid double-pushing.
+bool get isNavigatingToCall => _navigatingToCall;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -103,6 +113,9 @@ void main() async {
   print('main: screenutil ensureScreenSize');
   await ScreenUtil.ensureScreenSize();
 
+  final container = ProviderContainer();
+  _globalContainer = container;
+
   runApp(
     EasyLocalization(
       supportedLocales: const [
@@ -115,7 +128,10 @@ void main() async {
       ],
       path: 'assets/translations',
       fallbackLocale: const Locale('en'),
-      child: const ProviderScope(child: MyApp()),
+      child: UncontrolledProviderScope(
+        container: container,
+        child: const MyApp(),
+      ),
     ),
   );
 }
@@ -128,30 +144,71 @@ void _setupCallKitListeners() {
   FlutterCallkitIncoming.onEvent.listen((CallEvent? event) {
     if (event == null) return;
     print('📞 CallKit event: ${event.event}');
-    print('   Body: ${event.body}');
 
     switch (event.event) {
       case Event.actionCallAccept:
         print('✅ Call ACCEPTED from native call screen');
-        // Store the accepted call info so the call provider can pick it up
         final extra = event.body?['extra'] as Map<dynamic, dynamic>? ?? {};
+        final channelName = extra['channelName']?.toString() ?? '';
+        final callerId = extra['callerId']?.toString() ?? '';
+        final callerName = extra['callerName']?.toString() ?? 'Unknown';
+
+        // Always store pending data first
         _pendingAcceptedCall = {
-          'callerId': extra['callerId']?.toString() ?? '',
-          'callerName': extra['callerName']?.toString() ?? 'Unknown',
-          'channelName': extra['channelName']?.toString() ?? '',
+          'callerId': callerId,
+          'callerName': callerName,
+          'channelName': channelName,
           'callerRole': extra['callerRole']?.toString() ?? '',
         };
-        print('   Pending call data: $_pendingAcceptedCall');
+
+        // If provider is ready, accept the call right away and navigate
+        // directly to VoiceCallScreen so the user never sees the dashboard.
+        if (_globalContainer != null && channelName.isNotEmpty) {
+          final notifier = _globalContainer!.read(callProvider.notifier);
+          final currentState = _globalContainer!.read(callProvider);
+
+          if (currentState.status == CallStatus.ringing) {
+            // Set navigation guard BEFORE acceptCall() so that the
+            // synchronous state change (ringing→connected) doesn't
+            // trigger the dashboard's ref.listen to push a second screen.
+            _navigatingToCall = true;
+            notifier.acceptCall();
+            _pendingAcceptedCall = null;
+            _navigateToVoiceCallScreen();
+          } else if (!currentState.isInCall) {
+            _navigatingToCall = true;
+            notifier.acceptCallFromFcm(
+              callerId: callerId,
+              callerName: callerName,
+              channelName: channelName,
+            );
+            _pendingAcceptedCall = null;
+            _navigateToVoiceCallScreen();
+          }
+          // Otherwise leave _pendingAcceptedCall for dashboard pickup
+        }
         break;
 
       case Event.actionCallDecline:
         print('❌ Call DECLINED from native call screen');
         _pendingAcceptedCall = null;
+        if (_globalContainer != null) {
+          final currentState = _globalContainer!.read(callProvider);
+          if (currentState.status == CallStatus.ringing) {
+            _globalContainer!.read(callProvider.notifier).declineCall();
+          }
+        }
         break;
 
       case Event.actionCallTimeout:
         print('⏰ Call TIMEOUT from native call screen');
         _pendingAcceptedCall = null;
+        if (_globalContainer != null) {
+          final currentState = _globalContainer!.read(callProvider);
+          if (currentState.status == CallStatus.ringing) {
+            _globalContainer!.read(callProvider.notifier).declineCall();
+          }
+        }
         break;
 
       case Event.actionCallEnded:
@@ -163,6 +220,41 @@ void _setupCallKitListeners() {
         break;
     }
   });
+}
+
+/// Push VoiceCallScreen via the global navigator key.
+/// Retries until navigator is ready (handles cold-start + background resume).
+/// Caller must set _navigatingToCall = true before calling this.
+void _navigateToVoiceCallScreen() {
+  // _navigatingToCall is already true (set by caller before acceptCall)
+  _tryPushVoiceCall(attemptsLeft: 15);
+}
+
+void _tryPushVoiceCall({required int attemptsLeft}) {
+  if (attemptsLeft <= 0) {
+    _navigatingToCall = false;
+    print(
+      '📞 All navigation retries exhausted — relying on dashboard fallback',
+    );
+    return;
+  }
+  final nav = AppRouter.navigatorKey.currentState;
+  if (nav != null) {
+    if (VoiceCallScreen.isActive) {
+      _navigatingToCall = false;
+      print('📞 VoiceCallScreen already active — skipping push');
+      return;
+    }
+    nav
+        .push(MaterialPageRoute(builder: (_) => const VoiceCallScreen()))
+        .then((_) => _navigatingToCall = false);
+    print('📞 Navigated to VoiceCallScreen (attempt ${16 - attemptsLeft})');
+  } else {
+    // Navigator not ready yet — retry after 400ms
+    Future.delayed(const Duration(milliseconds: 400), () {
+      _tryPushVoiceCall(attemptsLeft: attemptsLeft - 1);
+    });
+  }
 }
 
 /// Pending call data set when user accepts from native call screen.

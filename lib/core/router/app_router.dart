@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/splash/screens/splash_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
@@ -6,7 +7,13 @@ import '../../features/pilgrim/screens/pilgrim_dashboard_screen.dart';
 import '../../features/moderator/screens/moderator_dashboard_screen.dart';
 
 class AppRouter {
+  /// Global navigator key — used by CallKit accept handler to push
+  /// VoiceCallScreen immediately without waiting for a dashboard rebuild.
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+
   static final GoRouter router = GoRouter(
+    navigatorKey: navigatorKey,
     initialLocation: '/',
     routes: [
       GoRoute(

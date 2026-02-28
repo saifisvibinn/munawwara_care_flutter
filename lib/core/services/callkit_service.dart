@@ -19,6 +19,10 @@ class CallKitService {
   String? _currentCallId;
   String? get currentCallId => _currentCallId;
 
+  /// Timestamp of the last showIncomingCall invocation — used to reject
+  /// rapid duplicate invocations that slip past the _currentCallId guard.
+  DateTime? _lastShowTime;
+
   /// Show a native incoming call screen.
   /// Call this from both foreground and background FCM handlers.
   Future<void> showIncomingCall({
@@ -27,7 +31,36 @@ class CallKitService {
     required String channelName,
     String? callerRole,
   }) async {
+    // ── Guard 1: Dart-side flag ─────────────────────────────────────────
+    if (_currentCallId != null) {
+      print('📞 [CallKit] _currentCallId already set — ignoring duplicate');
+      return;
+    }
+
+    // ── Guard 2: Timestamp-based dedup (5 s window) ─────────────────────
+    final now = DateTime.now();
+    if (_lastShowTime != null && now.difference(_lastShowTime!).inSeconds < 5) {
+      print('📞 [CallKit] showIncomingCall called within 5 s — ignoring');
+      return;
+    }
+
+    // ── Guard 3: Check actual system state for active calls ─────────────
+    try {
+      final activeCalls = await FlutterCallkitIncoming.activeCalls();
+      if (activeCalls is List && activeCalls.isNotEmpty) {
+        print(
+          '📞 [CallKit] System reports ${activeCalls.length} active call(s) — ending stale calls first',
+        );
+        await FlutterCallkitIncoming.endAllCalls();
+        // Small delay so the system UI fully dismisses
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
+    } catch (e) {
+      print('📞 [CallKit] activeCalls() check failed: $e');
+    }
+
     _currentCallId = _uuid.v4();
+    _lastShowTime = now;
 
     final params = CallKitParams(
       id: _currentCallId!,
@@ -82,8 +115,10 @@ class CallKitService {
   Future<void> endCurrentCall() async {
     if (_currentCallId != null) {
       await FlutterCallkitIncoming.endCall(_currentCallId!);
-      _currentCallId = null;
     }
+    // Also end ALL calls as belt-and-suspenders (catches stale calls)
+    await FlutterCallkitIncoming.endAllCalls();
+    _currentCallId = null;
   }
 
   /// End all calls (cleanup).

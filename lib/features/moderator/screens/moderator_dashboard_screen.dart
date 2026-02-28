@@ -10,7 +10,8 @@ import '../../../core/services/socket_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../calling/providers/call_provider.dart';
-import '../../calling/screens/incoming_call_screen.dart';
+import '../../calling/screens/voice_call_screen.dart';
+import '../../../main.dart' show isNavigatingToCall;
 import '../../notifications/providers/notification_provider.dart';
 import '../../notifications/screens/alerts_tab.dart';
 import '../providers/moderator_provider.dart';
@@ -131,6 +132,11 @@ class _ModeratorDashboardScreenState
           _alertTts.stop();
           ref.read(notificationProvider.notifier).fetch();
         });
+        // Listen for missed calls — refresh notification badge + list
+        SocketService.on('missed-call-received', (_) {
+          if (!mounted) return;
+          ref.read(notificationProvider.notifier).refetch();
+        });
       }
     });
   }
@@ -141,6 +147,7 @@ class _ModeratorDashboardScreenState
     _alertTts.stop();
     SocketService.off('sos-alert-received');
     SocketService.off('sos-alert-cancelled');
+    SocketService.off('missed-call-received');
     SocketService.offConnected(_onSocketConnected);
     super.dispose();
   }
@@ -149,15 +156,17 @@ class _ModeratorDashboardScreenState
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Show incoming call screen when a call arrives
-    ref.listen(callProvider, (_, next) {
-      if (next.status == CallStatus.ringing && mounted) {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            fullscreenDialog: true,
-            builder: (_) => const IncomingCallScreen(),
-          ),
-        );
+    // Fallback: if an incoming call was accepted and we're connected,
+    // navigate to VoiceCallScreen from here.
+    ref.listen(callProvider, (prev, next) {
+      if (next.status == CallStatus.connected &&
+          prev?.status == CallStatus.ringing &&
+          mounted &&
+          !isNavigatingToCall &&
+          !VoiceCallScreen.isActive) {
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => const VoiceCallScreen()));
       }
     });
 
