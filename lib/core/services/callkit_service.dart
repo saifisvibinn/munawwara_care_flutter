@@ -2,6 +2,7 @@ import 'package:flutter_callkit_incoming/flutter_callkit_incoming.dart';
 import 'package:flutter_callkit_incoming/entities/entities.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:uuid/uuid.dart';
+import '../utils/app_logger.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CallKitService — Shows native incoming call screen (like WhatsApp)
@@ -33,14 +34,16 @@ class CallKitService {
   }) async {
     // ── Guard 1: Dart-side flag ─────────────────────────────────────────
     if (_currentCallId != null) {
-      print('📞 [CallKit] _currentCallId already set — ignoring duplicate');
+      AppLogger.w(
+        '📞 [CallKit] _currentCallId already set — ignoring duplicate',
+      );
       return;
     }
 
     // ── Guard 2: Timestamp-based dedup (5 s window) ─────────────────────
     final now = DateTime.now();
     if (_lastShowTime != null && now.difference(_lastShowTime!).inSeconds < 5) {
-      print('📞 [CallKit] showIncomingCall called within 5 s — ignoring');
+      AppLogger.w('📞 [CallKit] showIncomingCall called within 5 s — ignoring');
       return;
     }
 
@@ -48,7 +51,7 @@ class CallKitService {
     try {
       final activeCalls = await FlutterCallkitIncoming.activeCalls();
       if (activeCalls is List && activeCalls.isNotEmpty) {
-        print(
+        AppLogger.w(
           '📞 [CallKit] System reports ${activeCalls.length} active call(s) — ending stale calls first',
         );
         await FlutterCallkitIncoming.endAllCalls();
@@ -56,7 +59,7 @@ class CallKitService {
         await Future.delayed(const Duration(milliseconds: 300));
       }
     } catch (e) {
-      print('📞 [CallKit] activeCalls() check failed: $e');
+      AppLogger.e('📞 [CallKit] activeCalls() check failed: $e');
     }
 
     _currentCallId = _uuid.v4();
@@ -108,7 +111,7 @@ class CallKitService {
     );
 
     await FlutterCallkitIncoming.showCallkitIncoming(params);
-    print('📞 Native incoming call screen shown for $callerName');
+    AppLogger.i('📞 Native incoming call screen shown for $callerName');
   }
 
   /// End/dismiss the current incoming call UI.
@@ -140,9 +143,9 @@ class CallKitService {
     final callerRole = data['callerRole'] ?? '';
     final channelName = data['channelName'] ?? '';
 
-    print('📞 FCM incoming_call detected — showing native call screen');
-    print('   Caller: $callerName ($callerId)');
-    print('   Channel: $channelName');
+    AppLogger.i('📞 FCM incoming_call detected — showing native call screen');
+    AppLogger.i('   Caller: $callerName ($callerId)');
+    AppLogger.i('   Channel: $channelName');
 
     await CallKitService.instance.showIncomingCall(
       callerId: callerId,

@@ -8,12 +8,12 @@ class ThemeNotifier extends Notifier<ThemeMode> {
   @override
   ThemeMode build() {
     _load();
-    return ThemeMode.system;
+    return ThemeMode.light; // Default before prefs load
   }
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
-    final val = prefs.getString(_kThemeKey) ?? 'system';
+    final val = prefs.getString(_kThemeKey) ?? 'light'; // First install: light
     state = _fromString(val);
   }
 

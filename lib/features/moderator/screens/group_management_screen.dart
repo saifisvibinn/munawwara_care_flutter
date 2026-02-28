@@ -1528,7 +1528,7 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                   for (var area in areaState.areas)
                     Marker(
                       point: LatLng(area.latitude, area.longitude),
-                      width: 80.w,
+                      width: 100.w,
                       height: 82.h,
                       child: _AreaMapMarker(area: area),
                     ),
@@ -3121,8 +3121,8 @@ class _PilgrimManageTile extends StatelessWidget {
                       width: 10.w,
                       height: 10.w,
                       decoration: BoxDecoration(
-                        color: pilgrim.hasLocation
-                            ? AppColors.primary
+                        color: pilgrim.isOnline
+                            ? const Color(0xFF16A34A)
                             : Colors.grey,
                         shape: BoxShape.circle,
                         border: Border.all(

@@ -1,4 +1,5 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../utils/app_logger.dart';
 
 /// Verify required and optional environment variables and
 /// print warnings or throw for missing required keys.
@@ -25,7 +26,6 @@ Future<void> verifyEnv() async {
 
   if (missingOptional.isNotEmpty) {
     // Log a friendly warning to remind developers to fill optional integrations.
-    // Using print here keeps it visible in debug/console output.
-    print('Warning: Missing optional .env keys: ${missingOptional.join(', ')}');
+    AppLogger.w('Missing optional .env keys: ${missingOptional.join(', ')}');
   }
 }

@@ -288,19 +288,81 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
     _sosHoldController.value = 0;
     final ok = await ref.read(pilgrimProvider.notifier).triggerSOS();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: ok ? Colors.red.shade700 : Colors.grey.shade700,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12.r),
+
+    if (ok) {
+      // Show call options dialog
+      await showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) => _SosCallOptionsSheet(
+          onCancel: () {
+            Navigator.pop(ctx);
+            _cancelSOS();
+          },
+          onInternetCall: () {
+            final mods = ref.read(pilgrimProvider).groupInfo?.moderators ?? [];
+            if (mods.isNotEmpty) {
+              final mod = mods.first;
+              Navigator.pop(ctx);
+              ref
+                  .read(callProvider.notifier)
+                  .startCall(
+                    remoteUserId: mod.id,
+                    remoteUserName: mod.fullName,
+                  );
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const VoiceCallScreen()),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('No moderator available to call.'),
+                ),
+              );
+            }
+          },
+          onNormalCall: () async {
+            final mods = ref.read(pilgrimProvider).groupInfo?.moderators ?? [];
+            final phone = mods.isNotEmpty ? mods.first.phoneNumber : null;
+            if (phone != null && phone.isNotEmpty) {
+              final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+              final uri = Uri.parse('tel:$cleanPhone');
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri);
+              } else if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Could not launch phone dialer.'),
+                  ),
+                );
+              }
+            } else if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Moderator phone number not available.'),
+                ),
+              );
+            }
+          },
         ),
-        content: Text(
-          ok ? 'sos_sent'.tr() : 'sos_failed'.tr(),
-          style: const TextStyle(color: Colors.white),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.grey.shade700,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.r),
+          ),
+          content: Text(
+            'sos_failed'.tr(),
+            style: const TextStyle(color: Colors.white),
+          ),
         ),
-      ),
-    );
+      );
+    }
   }
 
   void _cancelSOS() {
@@ -538,13 +600,31 @@ class _HomeTab extends StatelessWidget {
                       width: 52.w,
                       height: 52.w,
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.15),
-                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            AppColors.primary.withOpacity(0.2),
+                            AppColors.primary.withOpacity(0.1),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(14.r),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.1),
+                            blurRadius: 16,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
                       ),
-                      child: Icon(
-                        Symbols.mosque,
-                        size: 26.w,
-                        color: AppColors.primary,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(14.r),
+                        child: Image.asset(
+                          'assets/static/logo.jpeg',
+                          width: 52.w,
+                          height: 52.w,
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
                     SizedBox(width: 12.w),
@@ -1229,6 +1309,8 @@ class _InfoCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
                 width: 42.w,
@@ -1239,37 +1321,9 @@ class _InfoCard extends StatelessWidget {
                 ),
                 child: Icon(icon, size: 22.w, color: iconColor),
               ),
-            ],
-          ),
-          SizedBox(height: 12.h),
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 12.sp,
-              color: AppColors.textMutedLight,
-            ),
-          ),
-          SizedBox(height: 2.h),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  value,
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 15.sp,
-                    fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white : AppColors.textDark,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (badge != null) ...[
-                SizedBox(width: 4.w),
+              if (badge != null)
                 Container(
-                  padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(20.r),
@@ -1284,8 +1338,28 @@ class _InfoCard extends StatelessWidget {
                     ),
                   ),
                 ),
-              ],
             ],
+          ),
+          SizedBox(height: 12.h),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 12.sp,
+              color: AppColors.textMutedLight,
+            ),
+          ),
+          SizedBox(height: 2.h),
+          Text(
+            value,
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white : AppColors.textDark,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -2446,4 +2520,169 @@ class _AreaTailPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_AreaTailPainter old) => old.color != color;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SOS Call Options Sheet
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _SosCallOptionsSheet extends StatelessWidget {
+  final VoidCallback onCancel;
+  final VoidCallback onInternetCall;
+  final VoidCallback onNormalCall;
+
+  const _SosCallOptionsSheet({
+    required this.onCancel,
+    required this.onInternetCall,
+    required this.onNormalCall,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 16.w, vertical: 24.h),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(28.r),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 32.h),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Grab handle
+            Container(
+              width: 40.w,
+              height: 4.h,
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white24 : Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2.r),
+              ),
+            ),
+            SizedBox(height: 20.h),
+
+            // SOS active indicator
+            Container(
+              width: 60.w,
+              height: 60.w,
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.red.shade600,
+                size: 32.w,
+              ),
+            ),
+            SizedBox(height: 12.h),
+
+            Text(
+              'SOS Sent!',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 20.sp,
+                fontWeight: FontWeight.w700,
+                color: Colors.red.shade600,
+              ),
+            ),
+            SizedBox(height: 6.h),
+            Text(
+              'Your moderator has been notified.\nWould you like to call them now?',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 13.sp,
+                color: AppColors.textMutedLight,
+                height: 1.5,
+              ),
+            ),
+            SizedBox(height: 24.h),
+
+            // Internet Call Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: onInternetCall,
+                icon: Icon(Icons.wifi_calling_3_rounded, size: 20.w),
+                label: Text(
+                  'Call via Internet',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: EdgeInsets.symmetric(vertical: 14.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16.r),
+                  ),
+                  elevation: 0,
+                ),
+              ),
+            ),
+            SizedBox(height: 10.h),
+
+            // Normal Call Button
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onNormalCall,
+                icon: Icon(Icons.phone_rounded, size: 20.w),
+                label: Text(
+                  'Call Normally',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 15.sp,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: BorderSide(color: AppColors.primary, width: 1.5),
+                  padding: EdgeInsets.symmetric(vertical: 14.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16.r),
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: 10.h),
+
+            // Cancel SOS Button
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: onCancel,
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.red.shade400,
+                  padding: EdgeInsets.symmetric(vertical: 12.h),
+                ),
+                child: Text(
+                  'Cancel SOS',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 14.sp,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

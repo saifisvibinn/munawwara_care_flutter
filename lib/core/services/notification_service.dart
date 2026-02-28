@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'callkit_service.dart';
+import '../../core/utils/app_logger.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Background Message Handler
@@ -13,10 +14,10 @@ import 'callkit_service.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  print('📩 Background message received: ${message.messageId}');
-  print('   Title: ${message.notification?.title}');
-  print('   Body: ${message.notification?.body}');
-  print('   Data: ${message.data}');
+  AppLogger.i('📩 Background message received: ${message.messageId}');
+  AppLogger.i('   Title: ${message.notification?.title}');
+  AppLogger.i('   Body: ${message.notification?.body}');
+  AppLogger.i('   Data: ${message.data}');
 
   // ── Incoming call → show native call screen (like WhatsApp) ─────────────
   final handled = await CallKitService.handleFcmMessage(message);
@@ -70,7 +71,7 @@ class NotificationService {
     }
 
     _initialized = true;
-    print('✅ NotificationService initialized');
+    AppLogger.i('✅ NotificationService initialized');
   }
 
   // ── Create Android Notification Channels ──────────────────────────────────
@@ -123,7 +124,7 @@ class NotificationService {
     await androidPlugin.createNotificationChannel(urgentChannel);
     await androidPlugin.createNotificationChannel(callChannel);
 
-    print('✅ Notification channels created');
+    AppLogger.i('✅ Notification channels created');
   }
 
   // ── Show Notification from FCM Message ────────────────────────────────────
@@ -137,29 +138,29 @@ class NotificationService {
     String title = notification?.title ?? data['title'] ?? 'Munawwara Care';
     String body = notification?.body ?? data['body'] ?? '';
 
-    print('🔔 Processing FCM message:');
-    print('   Type: $type');
-    print('   Title: $title');
-    print('   Body: $body');
-    print('   Has notification block: ${notification != null}');
-    print('   Data keys: ${data.keys.toList()}');
+    AppLogger.d('🔔 Processing FCM message:');
+    AppLogger.d('   Type: $type');
+    AppLogger.d('   Title: $title');
+    AppLogger.d('   Body: $body');
+    AppLogger.d('   Has notification block: ${notification != null}');
+    AppLogger.d('   Data keys: ${data.keys.toList()}');
 
     // Handle incoming call → route to native CallKit screen
     if (type == 'incoming_call') {
-      print('📞 INCOMING CALL DETECTED → routing to native call screen');
+      AppLogger.i('📞 INCOMING CALL DETECTED → routing to native call screen');
       await CallKitService.handleFcmMessage(message);
       return;
     }
 
     // Handle urgent notifications
     if (type == 'urgent') {
-      print('🚨 Urgent notification detected');
+      AppLogger.w('🚨 Urgent notification detected');
       await _showUrgentNotification(title: title, body: body, data: data);
       return;
     }
 
     // Default notification
-    print('📬 Default notification');
+    AppLogger.i('📬 Default notification');
     await _showDefaultNotification(title: title, body: body, data: data);
   }
 
@@ -172,7 +173,7 @@ class NotificationService {
     required String body,
     required Map<String, dynamic> data,
   }) async {
-    print('🚨 Showing urgent notification');
+    AppLogger.w('🚨 Showing urgent notification');
 
     final androidDetails = AndroidNotificationDetails(
       'urgent',
@@ -219,7 +220,7 @@ class NotificationService {
     required String body,
     required Map<String, dynamic> data,
   }) async {
-    print('📬 Showing default notification');
+    AppLogger.i('📬 Showing default notification');
 
     const androidDetails = AndroidNotificationDetails(
       'default',
@@ -268,17 +269,17 @@ class NotificationService {
   // ── Notification Tap Handler ──────────────────────────────────────────────
 
   void _onNotificationTap(NotificationResponse response) {
-    print('📱 Notification tapped: ${response.payload}');
+    AppLogger.i('📱 Notification tapped: ${response.payload}');
 
     if (response.actionId == 'accept_call') {
-      print('✅ Accept call action');
+      AppLogger.i('✅ Accept call action');
       // TODO: Navigate to incoming call screen or trigger accept
     } else if (response.actionId == 'decline_call') {
-      print('❌ Decline call action');
+      AppLogger.i('❌ Decline call action');
       // TODO: Trigger call decline
     } else {
       // Regular notification tap - navigate to app
-      print('📖 Opening app from notification');
+      AppLogger.i('📖 Opening app from notification');
     }
   }
 
@@ -305,7 +306,7 @@ class NotificationService {
         // Request notification permission
         final notifGranted = await androidPlugin
             .requestNotificationsPermission();
-        print('📱 Notification permission: $notifGranted');
+        AppLogger.i('📱 Notification permission: $notifGranted');
 
         // Request exact alarms permission (for scheduling)
         await androidPlugin.requestExactAlarmsPermission();
@@ -315,12 +316,12 @@ class NotificationService {
         // Without this, incoming calls will only show as regular notifications
         final fullScreenGranted = await androidPlugin
             .requestFullScreenIntentPermission();
-        print('📱 Full-screen intent permission: $fullScreenGranted');
+        AppLogger.i('📱 Full-screen intent permission: $fullScreenGranted');
 
         if (fullScreenGranted == false) {
-          print('⚠️ WARNING: Full-screen intent permission denied!');
-          print('   Incoming calls will NOT show full-screen call UI');
-          print(
+          AppLogger.w('⚠️ WARNING: Full-screen intent permission denied!');
+          AppLogger.w('   Incoming calls will NOT show full-screen call UI');
+          AppLogger.w(
             '   User must enable in Settings > Apps > Munawwara Care > Notifications',
           );
         }

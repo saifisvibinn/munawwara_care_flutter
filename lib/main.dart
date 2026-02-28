@@ -19,6 +19,7 @@ import 'core/router/app_router.dart' show AppRouter;
 import 'features/auth/providers/auth_provider.dart';
 import 'features/calling/providers/call_provider.dart';
 import 'features/calling/screens/voice_call_screen.dart';
+import 'core/utils/app_logger.dart';
 
 // Global FCM token
 String? _globalFcmToken;
@@ -35,24 +36,24 @@ bool get isNavigatingToCall => _navigatingToCall;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  print('main: after ensureInitialized');
+  AppLogger.d('main: after ensureInitialized');
 
   await Firebase.initializeApp();
-  print('Firebase initialized');
+  AppLogger.i('Firebase initialized');
 
   // ── Initialize Notification Service ───────────────────────────────────────
   await NotificationService.instance.initialize();
-  print('Notification service initialized');
+  AppLogger.i('Notification service initialized');
 
   // ── Set up Firebase Background Message Handler ────────────────────────────
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-  print('Background message handler registered');
+  AppLogger.i('Background message handler registered');
 
   // ── Listen for CallKit events (accept/decline/timeout) ────────────────────
   _setupCallKitListeners();
 
   // ── Request Notification Permissions ──────────────────────────────────────
-  print('main: requesting fcm permission');
+  AppLogger.d('main: requesting fcm permission');
   if (Platform.isAndroid || Platform.isIOS) {
     try {
       await FirebaseMessaging.instance.requestPermission(
@@ -68,49 +69,59 @@ void main() async {
       // Request local notification permissions
       await NotificationService.instance.requestPermissions();
     } catch (e) {
-      print('FCM permission request failed: $e');
+      AppLogger.e('FCM permission request failed: $e');
     }
 
-    // ── Get and Store FCM Token ───────────────────────────────────────────────
-    _globalFcmToken = await FirebaseMessaging.instance.getToken();
-    print('FCM token: $_globalFcmToken');
+    try {
+      // ── Get and Store FCM Token ───────────────────────────────────────────────
+      _globalFcmToken = await FirebaseMessaging.instance.getToken();
+      AppLogger.i('FCM token: $_globalFcmToken');
 
-    // ── Handle Token Refresh ──────────────────────────────────────────────────
-    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
-      _globalFcmToken = newToken;
-      print('FCM token refreshed: $newToken');
-    });
+      // ── Handle Token Refresh ──────────────────────────────────────────────────
+      FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
+        _globalFcmToken = newToken;
+        AppLogger.i('FCM token refreshed: $newToken');
+      });
 
-    // ── Handle Foreground Messages ──────────────────────────────────────────
-    FirebaseMessaging.onMessage.listen((msg) async {
-      print('FCM onMessage: ${msg.notification?.title} ${msg.data}');
-      // Show local notification even when app is in foreground
-      await NotificationService.instance.showNotificationFromMessage(msg);
-    });
+      // ── Handle Foreground Messages ──────────────────────────────────────────
+      FirebaseMessaging.onMessage.listen((msg) async {
+        AppLogger.i('FCM onMessage: ${msg.notification?.title} ${msg.data}');
+        // Show local notification even when app is in foreground
+        await NotificationService.instance.showNotificationFromMessage(msg);
+      });
 
-    // ── Handle Message Opened App ───────────────────────────────────────────
-    FirebaseMessaging.onMessageOpenedApp.listen((msg) {
-      print('FCM onMessageOpenedApp: ${msg.notification?.title} ${msg.data}');
-    });
+      // ── Handle Message Opened App ───────────────────────────────────────────
+      FirebaseMessaging.onMessageOpenedApp.listen((msg) {
+        AppLogger.i(
+          'FCM onMessageOpenedApp: ${msg.notification?.title} ${msg.data}',
+        );
+      });
 
-    // ── Handle Initial Message (App opened from terminated state) ──────────
-    FirebaseMessaging.instance.getInitialMessage().then((msg) {
-      if (msg != null) {
-        print('FCM getInitialMessage: ${msg.notification?.title} ${msg.data}');
-      }
-    });
+      // ── Handle Initial Message (App opened from terminated state) ──────────
+      FirebaseMessaging.instance.getInitialMessage().then((msg) {
+        if (msg != null) {
+          AppLogger.i(
+            'FCM getInitialMessage: ${msg.notification?.title} ${msg.data}',
+          );
+        }
+      });
+    } catch (e) {
+      AppLogger.e(
+        'FCM messaging initialization failed (likely missing Google Play Services): $e',
+      );
+    }
   }
 
   // Prevent GoogleFonts from making network requests at runtime.
   // Fonts are served from the local cache only — avoids ANR on emulators.
   GoogleFonts.config.allowRuntimeFetching = false;
-  print('main: initializing EasyLocalization');
+  AppLogger.d('main: initializing EasyLocalization');
   await EasyLocalization.ensureInitialized();
-  print('main: loading dotenv');
+  AppLogger.d('main: loading dotenv');
   await dotenv.load(fileName: '.env');
-  print('main: verifying env');
+  AppLogger.d('main: verifying env');
   await verifyEnv();
-  print('main: screenutil ensureScreenSize');
+  AppLogger.d('main: screenutil ensureScreenSize');
   await ScreenUtil.ensureScreenSize();
 
   final container = ProviderContainer();
@@ -143,11 +154,11 @@ void main() async {
 void _setupCallKitListeners() {
   FlutterCallkitIncoming.onEvent.listen((CallEvent? event) {
     if (event == null) return;
-    print('📞 CallKit event: ${event.event}');
+    AppLogger.i('📞 CallKit event: ${event.event}');
 
     switch (event.event) {
       case Event.actionCallAccept:
-        print('✅ Call ACCEPTED from native call screen');
+        AppLogger.i('✅ Call ACCEPTED from native call screen');
         final extra = event.body?['extra'] as Map<dynamic, dynamic>? ?? {};
         final channelName = extra['channelName']?.toString() ?? '';
         final callerId = extra['callerId']?.toString() ?? '';
@@ -190,7 +201,7 @@ void _setupCallKitListeners() {
         break;
 
       case Event.actionCallDecline:
-        print('❌ Call DECLINED from native call screen');
+        AppLogger.w('❌ Call DECLINED from native call screen');
         _pendingAcceptedCall = null;
         if (_globalContainer != null) {
           final currentState = _globalContainer!.read(callProvider);
@@ -201,7 +212,7 @@ void _setupCallKitListeners() {
         break;
 
       case Event.actionCallTimeout:
-        print('⏰ Call TIMEOUT from native call screen');
+        AppLogger.w('⏰ Call TIMEOUT from native call screen');
         _pendingAcceptedCall = null;
         if (_globalContainer != null) {
           final currentState = _globalContainer!.read(callProvider);
@@ -212,7 +223,7 @@ void _setupCallKitListeners() {
         break;
 
       case Event.actionCallEnded:
-        print('📵 Call ENDED from native call screen');
+        AppLogger.i('📵 Call ENDED from native call screen');
         _pendingAcceptedCall = null;
         break;
 
@@ -233,7 +244,7 @@ void _navigateToVoiceCallScreen() {
 void _tryPushVoiceCall({required int attemptsLeft}) {
   if (attemptsLeft <= 0) {
     _navigatingToCall = false;
-    print(
+    AppLogger.w(
       '📞 All navigation retries exhausted — relying on dashboard fallback',
     );
     return;
@@ -242,13 +253,15 @@ void _tryPushVoiceCall({required int attemptsLeft}) {
   if (nav != null) {
     if (VoiceCallScreen.isActive) {
       _navigatingToCall = false;
-      print('📞 VoiceCallScreen already active — skipping push');
+      AppLogger.d('📞 VoiceCallScreen already active — skipping push');
       return;
     }
     nav
         .push(MaterialPageRoute(builder: (_) => const VoiceCallScreen()))
         .then((_) => _navigatingToCall = false);
-    print('📞 Navigated to VoiceCallScreen (attempt ${16 - attemptsLeft})');
+    AppLogger.i(
+      '📞 Navigated to VoiceCallScreen (attempt ${16 - attemptsLeft})',
+    );
   } else {
     // Navigator not ready yet — retry after 400ms
     Future.delayed(const Duration(milliseconds: 400), () {

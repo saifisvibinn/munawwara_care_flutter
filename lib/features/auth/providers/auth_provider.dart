@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/services/api_service.dart';
+import '../../../core/utils/app_logger.dart';
 
 // ── Auth State ────────────────────────────────────────────────────────────────
 
@@ -71,7 +72,7 @@ class AuthNotifier extends Notifier<AuthState> {
   // ── Restore session on startup ──────────────────────────────────────────────
   Future<void> _restoreSession() async {
     try {
-      print('AuthNotifier: restoring session');
+      AppLogger.d('AuthNotifier: restoring session');
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
       final role = prefs.getString('user_role');
@@ -90,11 +91,11 @@ class AuthNotifier extends Notifier<AuthState> {
       } else {
         state = const AuthState(isRestoringSession: false);
       }
-      print('AuthNotifier: restore complete');
+      AppLogger.d('AuthNotifier: restore complete');
     } catch (e, st) {
       // If shared preferences fails for any reason, we still want to clear the
       // restoring flag so the UI can proceed. Log the error to console.
-      print('AuthNotifier restoreSession error: $e\n$st');
+      AppLogger.e('AuthNotifier restoreSession error: $e\n$st');
       state = const AuthState(isRestoringSession: false);
     }
   }
@@ -261,9 +262,9 @@ class AuthNotifier extends Notifier<AuthState> {
         '/auth/fcm-token',
         data: {'fcm_token': fcmToken},
       );
-      print('✅ FCM token registered with backend');
+      AppLogger.i('✅ FCM token registered with backend');
     } catch (e) {
-      print('⚠️ Failed to register FCM token: $e');
+      AppLogger.e('⚠️ Failed to register FCM token: $e');
     }
   }
 

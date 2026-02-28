@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../../core/utils/app_logger.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -18,7 +19,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    print('SplashScreen initState');
+    AppLogger.d('SplashScreen initState');
     _navigate();
   }
 
@@ -26,7 +27,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     // Wait for _restoreSession to finish (isRestoringSession → false) with a
     // minimum splash display time of 1.5 s for a polished UX. Add a hard
     // timeout so we don't stay stuck if prefs/restore hangs.
-    print('SplashScreen waiting for auth restore');
+    AppLogger.d('SplashScreen waiting for auth restore');
     try {
       await Future.any([
         Future.wait([
@@ -47,17 +48,17 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       final route = auth.role == 'moderator'
           ? '/moderator-dashboard'
           : '/pilgrim-dashboard';
-      print('SplashScreen nav to authenticated $route');
+      AppLogger.i('SplashScreen nav to authenticated $route');
       context.go(route);
     } else {
-      print('SplashScreen nav to login');
+      AppLogger.i('SplashScreen nav to login');
       context.go('/login');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    print('SplashScreen build');
+    AppLogger.d('SplashScreen build');
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -148,8 +149,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                     child: Center(
                       child: Image.asset(
                         'assets/static/logo.jpeg',
-                        width: 80.w,
-                        height: 80.w,
+                        width: 110.w,
+                        height: 110.w,
                         fit: BoxFit.contain,
                       ),
                     ),

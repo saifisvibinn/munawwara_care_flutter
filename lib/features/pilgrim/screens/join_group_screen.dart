@@ -597,7 +597,8 @@ class _CornerPainter extends CustomPainter {
     canvas.drawPath(
       Path()
         ..moveTo(0, len + r)
-        ..arcToPoint(Offset(r, r), radius: Radius.circular(r))
+        ..lineTo(0, r)
+        ..arcToPoint(Offset(r, 0), radius: Radius.circular(r))
         ..lineTo(len + r, 0),
       paint,
     );
