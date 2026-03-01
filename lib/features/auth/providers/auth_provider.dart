@@ -16,7 +16,10 @@ class AuthState {
   final String? userId;
   final String? fullName;
   final String? email;
+  final bool emailVerified;
   final String? phoneNumber;
+  final String?
+  moderatorRequestStatus; // 'pending', 'approved', 'rejected', or null
 
   const AuthState({
     this.isLoading = false,
@@ -27,7 +30,9 @@ class AuthState {
     this.userId,
     this.fullName,
     this.email,
+    this.emailVerified = false,
     this.phoneNumber,
+    this.moderatorRequestStatus,
   });
 
   bool get isAuthenticated => token != null;
@@ -41,9 +46,12 @@ class AuthState {
     String? userId,
     String? fullName,
     String? email,
+    bool? emailVerified,
     String? phoneNumber,
+    String? moderatorRequestStatus,
     bool clearError = false,
     bool clearPhoneNumber = false,
+    bool clearEmail = false,
   }) {
     return AuthState(
       isLoading: isLoading ?? this.isLoading,
@@ -53,8 +61,11 @@ class AuthState {
       role: role ?? this.role,
       userId: userId ?? this.userId,
       fullName: fullName ?? this.fullName,
-      email: email ?? this.email,
+      email: clearEmail ? null : (email ?? this.email),
+      emailVerified: emailVerified ?? this.emailVerified,
       phoneNumber: clearPhoneNumber ? null : (phoneNumber ?? this.phoneNumber),
+      moderatorRequestStatus:
+          moderatorRequestStatus ?? this.moderatorRequestStatus,
     );
   }
 }
@@ -205,7 +216,9 @@ class AuthNotifier extends Notifier<AuthState> {
       state = state.copyWith(
         fullName: data['full_name'] as String?,
         email: data['email'] as String?,
+        emailVerified: data['email_verified'] as bool? ?? false,
         phoneNumber: data['phone_number'] as String?,
+        moderatorRequestStatus: data['moderator_request_status'] as String?,
       );
       // Persist updated full_name to prefs
       if (data['full_name'] != null) {
@@ -265,6 +278,71 @@ class AuthNotifier extends Notifier<AuthState> {
       AppLogger.i('✅ FCM token registered with backend');
     } catch (e) {
       AppLogger.e('⚠️ Failed to register FCM token: $e');
+    }
+  }
+
+  // ── Add Email ───────────────────────────────────────────────────────────────
+  Future<bool> addEmail(String email) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      await ApiService.dio.post(
+        '/auth/add-email',
+        data: {'email': email.trim()},
+      );
+      state = state.copyWith(
+        isLoading: false,
+        email: email.trim(),
+        emailVerified: false,
+      );
+      return true;
+    } on DioException catch (e) {
+      state = state.copyWith(isLoading: false, error: ApiService.parseError(e));
+      return false;
+    }
+  }
+
+  // ── Send Email Verification ─────────────────────────────────────────────────
+  Future<bool> sendEmailVerification() async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      await ApiService.dio.post('/auth/send-email-verification');
+      state = state.copyWith(isLoading: false);
+      return true;
+    } on DioException catch (e) {
+      state = state.copyWith(isLoading: false, error: ApiService.parseError(e));
+      return false;
+    }
+  }
+
+  // ── Verify Email ────────────────────────────────────────────────────────────
+  Future<bool> verifyEmail(String code) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      await ApiService.dio.post(
+        '/auth/verify-email',
+        data: {'code': code.trim()},
+      );
+      state = state.copyWith(isLoading: false, emailVerified: true);
+      return true;
+    } on DioException catch (e) {
+      state = state.copyWith(isLoading: false, error: ApiService.parseError(e));
+      return false;
+    }
+  }
+
+  // ── Request Moderator Status ────────────────────────────────────────────────
+  Future<bool> requestModerator() async {
+    state = state.copyWith(isLoading: true, clearError: true);
+    try {
+      await ApiService.dio.post('/auth/request-moderator');
+      state = state.copyWith(
+        isLoading: false,
+        moderatorRequestStatus: 'pending',
+      );
+      return true;
+    } on DioException catch (e) {
+      state = state.copyWith(isLoading: false, error: ApiService.parseError(e));
+      return false;
     }
   }
 
