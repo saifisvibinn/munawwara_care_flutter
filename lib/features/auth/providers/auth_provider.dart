@@ -99,6 +99,9 @@ class AuthNotifier extends Notifier<AuthState> {
           userId: userId,
           fullName: fullName,
         );
+
+        // Check if role has changed on server (e.g., pilgrim promoted to moderator)
+        await _checkRoleSync();
       } else {
         state = const AuthState(isRestoringSession: false);
       }
@@ -108,6 +111,37 @@ class AuthNotifier extends Notifier<AuthState> {
       // restoring flag so the UI can proceed. Log the error to console.
       AppLogger.e('AuthNotifier restoreSession error: $e\n$st');
       state = const AuthState(isRestoringSession: false);
+    }
+  }
+
+  // ── Check Role Sync ─────────────────────────────────────────────────────────
+  // Verifies if local role matches server role. If not, signs out user.
+  Future<void> _checkRoleSync() async {
+    try {
+      final localRole = state.role;
+      if (localRole == null) return;
+
+      AppLogger.d('Checking role sync: local=$localRole');
+
+      // Fetch fresh profile from server
+      final response = await ApiService.dio.get('/auth/me');
+      final data = response.data as Map<String, dynamic>;
+      final serverRole = data['user_type'] as String?;
+
+      AppLogger.d('Role sync check: local=$localRole, server=$serverRole');
+
+      // If roles don't match, user has been promoted/changed
+      if (serverRole != null && serverRole != localRole) {
+        AppLogger.i(
+          'Role mismatch detected! Signing out user to force re-login',
+        );
+        await logout();
+      }
+    } on DioException catch (e) {
+      // If profile fetch fails, don't sign out - could be network issue
+      AppLogger.w('Role sync check failed (network error): ${e.message}');
+    } catch (e) {
+      AppLogger.e('Role sync check error: $e');
     }
   }
 
