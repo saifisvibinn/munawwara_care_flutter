@@ -21,6 +21,7 @@ class AuthState {
   final String? phoneNumber;
   final String?
   moderatorRequestStatus; // 'pending', 'approved', 'rejected', or null
+  final bool promotedToModeratorPending;
 
   const AuthState({
     this.isLoading = false,
@@ -34,6 +35,7 @@ class AuthState {
     this.emailVerified = false,
     this.phoneNumber,
     this.moderatorRequestStatus,
+    this.promotedToModeratorPending = false,
   });
 
   bool get isAuthenticated => token != null;
@@ -50,9 +52,11 @@ class AuthState {
     bool? emailVerified,
     String? phoneNumber,
     String? moderatorRequestStatus,
+    bool? promotedToModeratorPending,
     bool clearError = false,
     bool clearPhoneNumber = false,
     bool clearEmail = false,
+    bool clearPromotionFlag = false,
   }) {
     return AuthState(
       isLoading: isLoading ?? this.isLoading,
@@ -67,6 +71,9 @@ class AuthState {
       phoneNumber: clearPhoneNumber ? null : (phoneNumber ?? this.phoneNumber),
       moderatorRequestStatus:
           moderatorRequestStatus ?? this.moderatorRequestStatus,
+      promotedToModeratorPending: clearPromotionFlag
+          ? false
+          : (promotedToModeratorPending ?? this.promotedToModeratorPending),
     );
   }
 }
@@ -133,17 +140,75 @@ class AuthNotifier extends Notifier<AuthState> {
 
       // If roles don't match, user has been promoted/changed
       if (serverRole != null && serverRole != localRole) {
+        if (localRole == 'pilgrim' && serverRole == 'moderator') {
+          AppLogger.i(
+            'Role upgraded pilgrim -> moderator. Refreshing session.',
+          );
+          await _refreshSessionAfterPromotion();
+          return;
+        }
+
         AppLogger.i(
-          'Role mismatch detected! Signing out user to force re-login',
+          'Role mismatch detected ($localRole -> $serverRole). Logging out.',
         );
         await logout();
       }
     } on DioException catch (e) {
-      // If profile fetch fails, don't sign out - could be network issue
+      final statusCode = e.response?.statusCode;
+
+      // Stale local session: token is invalid/expired or user no longer exists.
+      // Keep auth state consistent by forcing logout and fresh login.
+      if (statusCode == 401 || statusCode == 404) {
+        AppLogger.w(
+          'Role sync failed with status $statusCode. Clearing stale session.',
+        );
+        await logout();
+        return;
+      }
+
+      // Other failures are likely transient network/server issues.
       AppLogger.w('Role sync check failed (network error): ${e.message}');
     } catch (e) {
       AppLogger.e('Role sync check error: $e');
     }
+  }
+
+  Future<void> _refreshSessionAfterPromotion() async {
+    try {
+      final response = await ApiService.dio.post('/auth/refresh-session');
+      final data = response.data as Map<String, dynamic>;
+
+      final newToken = data['token'] as String;
+      final newRole = data['role'] as String;
+      final newUserId = data['user_id'] as String;
+      final newFullName = data['full_name'] as String;
+
+      await _persistSession(newToken, newRole, newUserId, newFullName);
+
+      state = state.copyWith(
+        token: newToken,
+        role: newRole,
+        userId: newUserId,
+        fullName: newFullName,
+        moderatorRequestStatus:
+            (data['moderator_request_status'] as String?) ?? 'approved',
+        promotedToModeratorPending: true,
+      );
+    } on DioException catch (e) {
+      AppLogger.w('Failed to refresh promoted session: ${e.message}');
+      await logout();
+    } catch (e) {
+      AppLogger.e('Failed to refresh promoted session: $e');
+      await logout();
+    }
+  }
+
+  Future<void> syncRoleWithServer() async {
+    await _checkRoleSync();
+  }
+
+  void acknowledgeModeratorPromotion() {
+    state = state.copyWith(clearPromotionFlag: true);
   }
 
   Future<void> _persistSession(

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:material_symbols_icons/symbols.dart';
@@ -54,6 +55,8 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
   Timer? _sosCountdownTimer;
   bool _isSosHolding = false;
   int _sosCountdown = 3;
+  Timer? _roleSyncTimer;
+  bool _promotionDialogOpen = false;
 
   // Location
   StreamSubscription<Position>? _locationSub;
@@ -202,6 +205,11 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
       }
       // Fetch notification badge count
       ref.read(notificationProvider.notifier).fetchUnreadCount();
+      await ref.read(authProvider.notifier).syncRoleWithServer();
+      _roleSyncTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+        if (!mounted) return;
+        ref.read(authProvider.notifier).syncRoleWithServer();
+      });
       // Load suggested areas if in a group
       final gIdForAreas = ref.read(pilgrimProvider).groupInfo?.groupId;
       if (gIdForAreas != null) {
@@ -218,6 +226,7 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
     _mapController.dispose();
     _sosTimer?.cancel();
     _sosCountdownTimer?.cancel();
+    _roleSyncTimer?.cancel();
     _locationSub?.cancel();
     SocketService.off('mod_nav_beacon');
     SocketService.off('removed-from-group');
@@ -229,6 +238,70 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
     SocketService.off('missed-call-received');
     SocketService.offConnected(_onSocketConnected);
     super.dispose();
+  }
+
+  Future<void> _showModeratorPromotionDialog() async {
+    if (!mounted || _promotionDialogOpen) return;
+    _promotionDialogOpen = true;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        final isDark = Theme.of(dialogContext).brightness == Brightness.dark;
+        return AlertDialog(
+          backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
+          title: Text(
+            'moderator_promotion_title'.tr(),
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white : AppColors.textDark,
+            ),
+          ),
+          content: Text(
+            'moderator_promotion_body'.tr(),
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              color: isDark
+                  ? AppColors.textMutedLight
+                  : AppColors.textMutedDark,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                ref.read(authProvider.notifier).acknowledgeModeratorPromotion();
+                Navigator.of(dialogContext).pop();
+              },
+              child: Text(
+                'moderator_promotion_later'.tr(),
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  color: isDark
+                      ? AppColors.textMutedLight
+                      : AppColors.textMutedDark,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                ref.read(authProvider.notifier).acknowledgeModeratorPromotion();
+                Navigator.of(dialogContext).pop();
+                context.go('/moderator-dashboard');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              child: Text('moderator_promotion_switch'.tr()),
+            ),
+          ],
+        );
+      },
+    );
+
+    _promotionDialogOpen = false;
   }
 
   // ── Location ────────────────────────────────────────────────────────────────
@@ -461,6 +534,21 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
         Navigator.of(
           context,
         ).push(MaterialPageRoute(builder: (_) => const VoiceCallScreen()));
+      }
+    });
+
+    ref.listen(authProvider, (prev, next) {
+      if (next.promotedToModeratorPending == true &&
+          prev?.promotedToModeratorPending != true &&
+          mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('moderator_promotion_snackbar'.tr()),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+        ref.read(notificationProvider.notifier).refetch();
+        _showModeratorPromotionDialog();
       }
     });
 

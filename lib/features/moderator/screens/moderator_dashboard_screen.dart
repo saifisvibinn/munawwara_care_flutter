@@ -155,6 +155,7 @@ class _ModeratorDashboardScreenState
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final moderatorState = ref.watch(moderatorProvider);
 
     // Fallback: if an incoming call was accepted and we're connected,
     // navigate to VoiceCallScreen from here.
@@ -170,17 +171,48 @@ class _ModeratorDashboardScreenState
       }
     });
 
-    final hasGroups = ref.watch(moderatorProvider).groups.isNotEmpty;
+    final hasGroups = moderatorState.groups.isNotEmpty;
+    final showEmptyGroupsArrow =
+        _currentTab == 0 &&
+        !moderatorState.isLoading &&
+        moderatorState.error == null &&
+        !hasGroups;
 
     return Scaffold(
       backgroundColor: isDark
           ? AppColors.backgroundDark
           : const Color(0xFFF0F0F8),
-      body: IndexedStack(
-        index: _currentTab,
+      body: Stack(
         children: [
-          _GroupsHomeTab(searchController: _searchController),
-          const AlertsTab(),
+          IndexedStack(
+            index: _currentTab,
+            children: [
+              _GroupsHomeTab(searchController: _searchController),
+              const AlertsTab(),
+            ],
+          ),
+          if (showEmptyGroupsArrow)
+            IgnorePointer(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: 88.h),
+                  child: Transform.translate(
+                    offset: Offset(54.w, 0),
+                    child: Transform.rotate(
+                      angle: 0.42,
+                      child: Icon(
+                        Symbols.arrow_downward,
+                        size: 28.w,
+                        color: isDark
+                            ? const Color(0xFFD4B896)
+                            : const Color(0xFF1A1A4E),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
       floatingActionButton: SizedBox(
@@ -245,6 +277,8 @@ class _GroupsHomeTabState extends ConsumerState<_GroupsHomeTab> {
     final state = ref.watch(moderatorProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final groups = _filtered(state.groups);
+    final showEmptyState =
+        !state.isLoading && state.error == null && groups.isEmpty;
     final anySOS = state.groups.any((g) => g.sosCount > 0);
 
     return SafeArea(
@@ -491,8 +525,15 @@ class _GroupsHomeTabState extends ConsumerState<_GroupsHomeTab> {
                 ),
               ),
 
+            // ── Empty State ──
+            if (showEmptyState)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: _GroupsEmptyState(isDark: isDark),
+              ),
+
             // ── Group cards list ──
-            if (!state.isLoading)
+            if (!state.isLoading && groups.isNotEmpty)
               SliverPadding(
                 padding: EdgeInsets.symmetric(horizontal: 20.w),
                 sliver: SliverList(
@@ -508,6 +549,66 @@ class _GroupsHomeTabState extends ConsumerState<_GroupsHomeTab> {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _GroupsEmptyState extends StatelessWidget {
+  final bool isDark;
+  const _GroupsEmptyState({required this.isDark});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(24.w, 6.h, 24.w, 0),
+      child: Column(
+        children: [
+          SizedBox(height: 6.h),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16.r),
+            child: Image.asset(
+              isDark
+                  ? 'assets/static/empty_groups_dark.png'
+                  : 'assets/static/empty_groups_light.png',
+              width: 330.w,
+              height: 270.h,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => Icon(
+                Symbols.mosque,
+                size: 220.w,
+                color: isDark
+                    ? const Color(0xFF7FA6CE)
+                    : const Color(0xFF7FA6CE),
+              ),
+            ),
+          ),
+          SizedBox(height: 14.h),
+          Text(
+            'dashboard_empty_title'.tr(),
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontWeight: FontWeight.w800,
+              fontSize: 30.sp,
+              color: isDark ? Colors.white : const Color(0xFF1A1A4E),
+            ),
+          ),
+          SizedBox(height: 8.h),
+          Text(
+            'dashboard_empty_subtitle'.tr(),
+            textAlign: TextAlign.center,
+            maxLines: 3,
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14.sp,
+              height: 1.3,
+              color: isDark ? const Color(0xFFCBD5E1) : AppColors.textDark,
+            ),
+          ),
+          SizedBox(height: 96.h),
+        ],
       ),
     );
   }

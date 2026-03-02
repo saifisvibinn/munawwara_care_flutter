@@ -100,6 +100,8 @@ flutter:
     - assets/static/icon.png
     - assets/static/logo.jpeg
     - assets/static/splash-screen.png
+    - assets/static/empty_groups_light.png
+    - assets/static/empty_groups_dark.png
     - assets/static/urgent.wav
     - .env
 

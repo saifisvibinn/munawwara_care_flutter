@@ -81,6 +81,8 @@ class _PilgrimProfileEditScreenState
   }
 
   Future<void> _handleEmailAction() async {
+    // Refresh first so reopened app uses latest server state.
+    await ref.read(authProvider.notifier).fetchProfile();
     final authState = ref.read(authProvider);
     final hasEmail = authState.email != null && authState.email!.isNotEmpty;
 

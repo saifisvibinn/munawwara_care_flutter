@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,6 +21,7 @@ class PilgrimProfileScreen extends ConsumerStatefulWidget {
 
 class _PilgrimProfileScreenState extends ConsumerState<PilgrimProfileScreen> {
   late String _selectedLocale;
+  Timer? _profileRefreshTimer;
 
   static const _languages = [
     {'code': 'en', 'name': 'English', 'native': 'English', 'flag': '🇬🇧'},
@@ -38,6 +41,16 @@ class _PilgrimProfileScreenState extends ConsumerState<PilgrimProfileScreen> {
   void initState() {
     super.initState();
     Future.microtask(() => ref.read(authProvider.notifier).fetchProfile());
+    _profileRefreshTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (!mounted) return;
+      ref.read(authProvider.notifier).fetchProfile();
+    });
+  }
+
+  @override
+  void dispose() {
+    _profileRefreshTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -243,6 +256,138 @@ class _PilgrimProfileScreenState extends ConsumerState<PilgrimProfileScreen> {
                       ),
                     ),
 
+                    if (authState.moderatorRequestStatus != null) ...[
+                      SizedBox(height: 24.h),
+                      _SectionLabel(
+                        label: 'edit_profile_moderator_section'.tr(),
+                        textMuted: textMuted,
+                      ),
+                      SizedBox(height: 8.h),
+                      Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: cardBg,
+                          borderRadius: BorderRadius.circular(16.r),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(
+                                isDark ? 0.3 : 0.06,
+                              ),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.all(16.w),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 38.w,
+                                    height: 38.w,
+                                    decoration: BoxDecoration(
+                                      color: _getStatusColor(
+                                        authState.moderatorRequestStatus!,
+                                      ).withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(10.r),
+                                    ),
+                                    child: Icon(
+                                      _getStatusIcon(
+                                        authState.moderatorRequestStatus!,
+                                      ),
+                                      color: _getStatusColor(
+                                        authState.moderatorRequestStatus!,
+                                      ),
+                                      size: 18.sp,
+                                    ),
+                                  ),
+                                  SizedBox(width: 12.w),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          authState.moderatorRequestStatus ==
+                                                  'pending'
+                                              ? 'moderator_status_pending'.tr()
+                                              : authState
+                                                        .moderatorRequestStatus ==
+                                                    'approved'
+                                              ? 'moderator_status_approved'.tr()
+                                              : 'moderator_status_rejected'
+                                                    .tr(),
+                                          style: TextStyle(
+                                            fontFamily: 'Lexend',
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14.sp,
+                                            color: textPrimary,
+                                          ),
+                                        ),
+                                        SizedBox(height: 2.h),
+                                        Text(
+                                          authState.moderatorRequestStatus ==
+                                                  'pending'
+                                              ? 'moderator_status_pending_desc'
+                                                    .tr()
+                                              : authState
+                                                        .moderatorRequestStatus ==
+                                                    'approved'
+                                              ? 'moderator_status_approved_desc'
+                                                    .tr()
+                                              : 'moderator_status_rejected_desc'
+                                                    .tr(),
+                                          style: TextStyle(
+                                            fontFamily: 'Lexend',
+                                            fontSize: 11.sp,
+                                            color: textMuted,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (authState.moderatorRequestStatus ==
+                                      'approved' &&
+                                  authState.role == 'moderator') ...[
+                                SizedBox(height: 12.h),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton(
+                                    onPressed: () {
+                                      context.go('/moderator-dashboard');
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.primary,
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          10.r,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      'profile_switch_moderator_dashboard'.tr(),
+                                      style: TextStyle(
+                                        fontFamily: 'Lexend',
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13.sp,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+
                     SizedBox(height: 28.h),
 
                     // ── APPEARANCE section ───────────────────────────────
@@ -439,6 +584,32 @@ class _PilgrimProfileScreenState extends ConsumerState<PilgrimProfileScreen> {
     if (parts.isEmpty) return 'P';
     if (parts.length == 1) return parts[0][0].toUpperCase();
     return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'pending':
+        return Colors.orange;
+      case 'approved':
+        return Colors.green;
+      case 'rejected':
+        return Colors.red;
+      default:
+        return AppColors.primary;
+    }
+  }
+
+  IconData _getStatusIcon(String status) {
+    switch (status) {
+      case 'pending':
+        return Icons.hourglass_empty_rounded;
+      case 'approved':
+        return Icons.check_circle_rounded;
+      case 'rejected':
+        return Icons.cancel_rounded;
+      default:
+        return Icons.help_outline_rounded;
+    }
   }
 }
 
