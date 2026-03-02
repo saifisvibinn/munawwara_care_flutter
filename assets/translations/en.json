@@ -301,6 +301,8 @@
     "area_navigate": "Navigate",
     "area_navigate_confirm_title": "Open Maps",
     "area_navigate_confirm_message": "Do you want to open Google Maps for navigation to this area?",
+    "area_delete_meetpoint_confirm_title": "Delete Meetpoint",
+    "area_delete_meetpoint_confirm_message": "Are you sure you want to delete this meetpoint?",
     "area_open_maps": "Open Maps",
     "area_cancel": "Cancel",
     "join_group_title": "Scan QR Code",
@@ -315,5 +317,13 @@
     "join_group_enter_code": "Please enter a group code",
     "join_group_no_group_title": "Not in a group yet",
     "join_group_no_group_sub": "Scan a QR code or enter your group code to get started.",
-    "join_group_no_group_btn": "Join a Group"
+    "join_group_no_group_btn": "Join a Group",
+    "popup_urgent_meetpoint": "📍 Urgent Meetpoint",
+    "popup_urgent_message": "Urgent Message",
+    "popup_new_message": "New Message",
+    "popup_now": "Now",
+    "popup_play_voice": "Play Voice",
+    "popup_play_tts": "Play TTS",
+    "popup_view_chat": "View Chat",
+    "popup_dismiss": "Dismiss"
 }

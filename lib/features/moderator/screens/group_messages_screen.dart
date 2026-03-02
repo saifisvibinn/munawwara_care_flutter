@@ -11,6 +11,7 @@ import 'package:material_symbols_icons/symbols.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../shared/models/message_model.dart';
@@ -104,7 +105,7 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _load().then((_) => _scrollToBottom());
+      _load().then((_) => _scrollToBottom(jump: true));
     });
   }
 
@@ -125,11 +126,16 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
     await ref.read(messageProvider.notifier).loadMessages(widget.groupId);
   }
 
-  void _scrollToBottom() {
+  void _scrollToBottom({bool jump = false}) {
+    // With reverse:true, offset 0 = bottom (newest messages).
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
+      if (!mounted || !_scrollController.hasClients) return;
+      if (_scrollController.offset <= 0) return; // already at bottom
+      if (jump) {
+        _scrollController.jumpTo(0);
+      } else {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          0,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -388,6 +394,14 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
     final msgState = ref.watch(messageProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // Scroll to bottom when new socket messages arrive
+    ref.listen(messageProvider, (prev, next) {
+      if (!next.isLoading &&
+          (prev?.messages.length ?? 0) < next.messages.length) {
+        _scrollToBottom();
+      }
+    });
+
     return Scaffold(
       backgroundColor: isDark
           ? AppColors.backgroundDark
@@ -513,9 +527,15 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
       onRefresh: _load,
       child: ListView.builder(
         controller: _scrollController,
+        reverse: true,
         padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 8.h),
         itemCount: messages.length,
-        itemBuilder: (_, i) => _buildCard(messages[i], isDark),
+        itemBuilder: (_, i) {
+          // reverse:true renders index 0 at the bottom;
+          // map to newest-first order so newest = bottom.
+          final msg = messages[messages.length - 1 - i];
+          return _buildCard(msg, isDark);
+        },
       ),
     );
   }
@@ -573,6 +593,7 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
               if (msg.type == 'text') _buildTextBody(msg, isDark),
               if (msg.type == 'voice') _buildVoiceBody(msg, isDark),
               if (msg.type == 'tts') _buildTtsBody(msg, isDark),
+              if (msg.type == 'meetpoint') _buildMeetpointBody(msg, isDark),
               SizedBox(height: 8.h),
               // Footer
               Row(
@@ -707,6 +728,120 @@ class _GroupMessagesScreenState extends ConsumerState<GroupMessagesScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildMeetpointBody(GroupMessage msg, bool isDark) {
+    final mp = msg.meetpointData;
+    final name = mp?['name']?.toString() ?? msg.content ?? 'Meetpoint';
+    final lat = (mp?['latitude'] as num?)?.toDouble();
+    final lng = (mp?['longitude'] as num?)?.toDouble();
+
+    return Container(
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF3B1212) : const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(14.r),
+        border: Border.all(color: const Color(0xFFFECACA)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34.w,
+                height: 34.w,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFDC2626),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Symbols.crisis_alert,
+                  color: Colors.white,
+                  size: 18.w,
+                ),
+              ),
+              SizedBox(width: 10.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'area_meetpoint'.tr(),
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontWeight: FontWeight.w700,
+                        fontSize: 10.sp,
+                        color: const Color(0xFFDC2626),
+                      ),
+                    ),
+                    SizedBox(height: 2.h),
+                    Text(
+                      name,
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14.sp,
+                        color: isDark ? Colors.white : AppColors.textDark,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (msg.content != null &&
+              msg.content!.isNotEmpty &&
+              msg.content != name) ...[
+            SizedBox(height: 8.h),
+            Text(
+              msg.content!,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 13.sp,
+                height: 1.4,
+                color: isDark ? Colors.white70 : AppColors.textDark,
+              ),
+            ),
+          ],
+          if (lat != null && lng != null) ...[
+            SizedBox(height: 10.h),
+            GestureDetector(
+              onTap: () {
+                final url = Uri.parse(
+                  'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng',
+                );
+                launchUrl(url, mode: LaunchMode.externalApplication);
+              },
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(vertical: 10.h),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDC2626),
+                  borderRadius: BorderRadius.circular(10.r),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Symbols.navigation, size: 16.w, color: Colors.white),
+                    SizedBox(width: 6.w),
+                    Text(
+                      'area_navigate'.tr(),
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12.sp,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -1134,4 +1269,3 @@ class _TypeButton extends StatelessWidget {
     );
   }
 }
-

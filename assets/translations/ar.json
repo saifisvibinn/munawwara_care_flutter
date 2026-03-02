@@ -288,6 +288,8 @@
     "area_navigate": "انتقل",
     "area_navigate_confirm_title": "فتح الخرائط",
     "area_navigate_confirm_message": "هل تريد فتح خرائط جوجل للتنقل إلى هذه المنطقة؟",
+    "area_delete_meetpoint_confirm_title": "حذف نقطة الالتقاء",
+    "area_delete_meetpoint_confirm_message": "هل أنت متأكد أنك تريد حذف نقطة الالتقاء هذه؟",
     "area_open_maps": "فتح الخرائط",
     "area_cancel": "إلغاء",
     "join_group_title": "مسح رمز QR",
@@ -302,5 +304,13 @@
     "join_group_enter_code": "يرجى إدخال رمز المجموعة",
     "join_group_no_group_title": "لست في مجموعة بعد",
     "join_group_no_group_sub": "امسح رمز QR أو أدخل رمز المجموعة للبدء.",
-    "join_group_no_group_btn": "انضم إلى مجموعة"
+    "join_group_no_group_btn": "انضم إلى مجموعة",
+    "popup_urgent_meetpoint": "📍 نقطة التقاء عاجلة",
+    "popup_urgent_message": "رسالة عاجلة",
+    "popup_new_message": "رسالة جديدة",
+    "popup_now": "الآن",
+    "popup_play_voice": "تشغيل الصوت",
+    "popup_play_tts": "تشغيل TTS",
+    "popup_view_chat": "عرض الدردشة",
+    "popup_dismiss": "إغلاق"
 }

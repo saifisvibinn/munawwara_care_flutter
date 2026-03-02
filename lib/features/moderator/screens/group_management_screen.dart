@@ -1384,6 +1384,70 @@ class _GroupManagementScreenState extends ConsumerState<GroupManagementScreen> {
                                   // Delete
                                   GestureDetector(
                                     onTap: () async {
+                                      if (area.isMeetpoint) {
+                                        final shouldDelete =
+                                            await showDialog<bool>(
+                                              context: context,
+                                              builder: (dialogCtx) {
+                                                return AlertDialog(
+                                                  title: Text(
+                                                    'area_delete_meetpoint_confirm_title'
+                                                        .tr(),
+                                                    style: const TextStyle(
+                                                      fontFamily: 'Lexend',
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                  content: Text(
+                                                    'area_delete_meetpoint_confirm_message'
+                                                        .tr(),
+                                                    style: const TextStyle(
+                                                      fontFamily: 'Lexend',
+                                                    ),
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          dialogCtx,
+                                                        ).pop(false);
+                                                      },
+                                                      child: Text(
+                                                        'area_cancel'.tr(),
+                                                        style: const TextStyle(
+                                                          fontFamily: 'Lexend',
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    ElevatedButton(
+                                                      style:
+                                                          ElevatedButton.styleFrom(
+                                                            backgroundColor:
+                                                                Colors.red,
+                                                          ),
+                                                      onPressed: () {
+                                                        Navigator.of(
+                                                          dialogCtx,
+                                                        ).pop(true);
+                                                      },
+                                                      child: Text(
+                                                        'msg_delete_confirm'
+                                                            .tr(),
+                                                        style: const TextStyle(
+                                                          fontFamily: 'Lexend',
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                );
+                                              },
+                                            ) ??
+                                            false;
+
+                                        if (!shouldDelete) return;
+                                      }
+
                                       final ok = await ref
                                           .read(suggestedAreaProvider.notifier)
                                           .deleteArea(group.id, area.id);

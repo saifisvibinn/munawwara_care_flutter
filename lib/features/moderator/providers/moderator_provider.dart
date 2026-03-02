@@ -40,7 +40,7 @@ class PilgrimInGroup {
       phoneNumber: j['phone_number']?.toString(),
       lat: (loc?['lat'] as num?)?.toDouble(),
       lng: (loc?['lng'] as num?)?.toDouble(),
-      batteryPercent: j['battery_percent'] as int?,
+      batteryPercent: (j['battery_percent'] as num?)?.toInt(),
       lastUpdated: j['last_updated'] != null
           ? DateTime.tryParse(j['last_updated'].toString())
           : null,
@@ -342,7 +342,9 @@ class ModeratorNotifier extends Notifier<ModeratorState> {
         '/groups/$groupId/add-pilgrim',
         data: {'identifier': identifier.trim()},
       );
-      await refreshGroup(groupId);
+      // Refresh this group; fall back to full dashboard reload
+      final ok = await refreshGroup(groupId);
+      if (!ok) await loadDashboard();
       return (true, null);
     } on DioException catch (e) {
       return (false, ApiService.parseError(e));
@@ -415,7 +417,7 @@ class ModeratorNotifier extends Notifier<ModeratorState> {
   }
 
   // Re-fetch a single group and update state
-  Future<void> refreshGroup(String groupId) async {
+  Future<bool> refreshGroup(String groupId) async {
     try {
       final resp = await ApiService.dio.get('/groups/$groupId');
       final updated = ModeratorGroup.fromJson(
@@ -425,7 +427,12 @@ class ModeratorNotifier extends Notifier<ModeratorState> {
           .map((g) => g.id == groupId ? updated : g)
           .toList();
       state = state.copyWith(groups: groups);
-    } catch (_) {}
+      return true;
+    } catch (e) {
+      // ignore: avoid_print
+      print('[ModeratorProvider] refreshGroup($groupId) failed: $e');
+      return false;
+    }
   }
 
   // Create a new group — returns (success, errorMessage)

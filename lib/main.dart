@@ -86,7 +86,13 @@ void main() async {
       // ── Handle Foreground Messages ──────────────────────────────────────────
       FirebaseMessaging.onMessage.listen((msg) async {
         AppLogger.i('FCM onMessage: ${msg.notification?.title} ${msg.data}');
-        // Show local notification even when app is in foreground
+        final notifType = msg.data['notification_type']?.toString() ?? '';
+        // Skip system tray notification for message/meetpoint types when
+        // the app is in foreground — the in-app popup overlay handles these.
+        if (notifType == 'new_message' || notifType == 'meetpoint') {
+          AppLogger.i('FCM onMessage: suppressed system notif (in-app popup)');
+          return;
+        }
         await NotificationService.instance.showNotificationFromMessage(msg);
       });
 
@@ -95,6 +101,7 @@ void main() async {
         AppLogger.i(
           'FCM onMessageOpenedApp: ${msg.notification?.title} ${msg.data}',
         );
+        NotificationService.navigateFromNotificationData(msg.data);
       });
 
       // ── Handle Initial Message (App opened from terminated state) ──────────
@@ -103,6 +110,7 @@ void main() async {
           AppLogger.i(
             'FCM getInitialMessage: ${msg.notification?.title} ${msg.data}',
           );
+          NotificationService.navigateFromNotificationData(msg.data);
         }
       });
     } catch (e) {

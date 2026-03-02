@@ -288,6 +288,8 @@
     "area_navigate":  "Yol Tarifi",
     "area_navigate_confirm_title":  "Haritayı Aç",
     "area_navigate_confirm_message":  "Bu alana navigasyon için Google Maps'i açmak ister misiniz?",
+    "area_delete_meetpoint_confirm_title":  "Buluşma Noktasını Sil",
+    "area_delete_meetpoint_confirm_message":  "Bu buluşma noktasını silmek istediğinizden emin misiniz?",
     "area_open_maps":  "Haritayı Aç",
     "area_cancel":  "İptal",
     "join_group_title":  "QR Kodu Tara",
@@ -302,5 +304,13 @@
     "join_group_enter_code":  "Lütfen bir grup kodu girin",
     "join_group_no_group_title":  "Henüz bir grupta değilsiniz",
     "join_group_no_group_sub":  "Başlamak için QR kodu tarayın veya grup kodunuzu girin.",
-    "join_group_no_group_btn":  "Bir Gruba Katıl"
+    "join_group_no_group_btn":  "Bir Gruba Katıl",
+    "popup_urgent_meetpoint":  "📍 Acil Buluşma Noktası",
+    "popup_urgent_message":  "Acil Mesaj",
+    "popup_new_message":  "Yeni Mesaj",
+    "popup_now":  "Şimdi",
+    "popup_play_voice":  "Sesi Oynat",
+    "popup_play_tts":  "TTS Oynat",
+    "popup_view_chat":  "Sohbeti Gör",
+    "popup_dismiss":  "Kapat"
 }

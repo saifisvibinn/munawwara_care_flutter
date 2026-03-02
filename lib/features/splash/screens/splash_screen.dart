@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/utils/app_logger.dart';
+import '../../../core/services/notification_service.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -50,6 +51,16 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           : '/pilgrim-dashboard';
       AppLogger.i('SplashScreen nav to authenticated $route');
       context.go(route);
+
+      // Check for pending notification deep-link (cold-start scenario)
+      final pending = NotificationService.consumePendingNotificationData();
+      if (pending != null && pending.isNotEmpty) {
+        AppLogger.i('SplashScreen: processing pending notification deep-link');
+        // Small delay so the dashboard is mounted before we push the chat
+        Future.delayed(const Duration(milliseconds: 600), () {
+          NotificationService.navigateFromNotificationData(pending);
+        });
+      }
     } else {
       AppLogger.i('SplashScreen nav to login');
       context.go('/login');

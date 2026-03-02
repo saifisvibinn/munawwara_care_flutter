@@ -279,11 +279,12 @@ class AuthNotifier extends Notifier<AuthState> {
     required String password,
   }) async {
     state = state.copyWith(isLoading: true, clearError: true);
+    final normalizedIdentifier = identifier.trim();
 
     try {
       final response = await ApiService.dio.post(
         '/auth/login',
-        data: {'identifier': identifier, 'password': password},
+        data: {'identifier': normalizedIdentifier, 'password': password},
       );
       final data = response.data as Map<String, dynamic>;
 

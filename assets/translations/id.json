@@ -288,6 +288,8 @@
     "area_navigate":  "Navigasi",
     "area_navigate_confirm_title":  "Buka Maps",
     "area_navigate_confirm_message":  "Apakah Anda ingin membuka Google Maps untuk navigasi ke area ini?",
+    "area_delete_meetpoint_confirm_title":  "Hapus Titik Pertemuan",
+    "area_delete_meetpoint_confirm_message":  "Apakah Anda yakin ingin menghapus titik pertemuan ini?",
     "area_open_maps":  "Buka Maps",
     "area_cancel":  "Batal",
     "join_group_title":  "Pindai Kode QR",
@@ -302,5 +304,13 @@
     "join_group_enter_code":  "Masukkan kode grup",
     "join_group_no_group_title":  "Belum bergabung grup",
     "join_group_no_group_sub":  "Pindai kode QR atau masukkan kode grup Anda untuk memulai.",
-    "join_group_no_group_btn":  "Bergabung ke Grup"
+    "join_group_no_group_btn":  "Bergabung ke Grup",
+    "popup_urgent_meetpoint":  "📍 Titik Pertemuan Mendesak",
+    "popup_urgent_message":  "Pesan Mendesak",
+    "popup_new_message":  "Pesan Baru",
+    "popup_now":  "Sekarang",
+    "popup_play_voice":  "Putar Suara",
+    "popup_play_tts":  "Putar TTS",
+    "popup_view_chat":  "Lihat Chat",
+    "popup_dismiss":  "Tutup"
 }

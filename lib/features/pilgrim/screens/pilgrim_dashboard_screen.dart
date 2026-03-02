@@ -17,6 +17,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/services/socket_service.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/in_app_popup.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../calling/providers/call_provider.dart';
 import '../../calling/screens/voice_call_screen.dart';
@@ -26,6 +27,7 @@ import '../../notifications/screens/alerts_tab.dart';
 import '../../shared/providers/message_provider.dart';
 import '../../shared/providers/suggested_area_provider.dart';
 import '../../shared/models/suggested_area_model.dart';
+import '../../shared/models/message_model.dart';
 import '../providers/pilgrim_provider.dart';
 import 'group_inbox_screen.dart';
 import 'join_group_screen.dart';
@@ -47,6 +49,9 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
     with TickerProviderStateMixin {
   // Bottom nav
   int _currentTab = 0;
+
+  // Notifier to trigger chat scroll-to-bottom on tab switch
+  final ValueNotifier<int> _chatScrollNotifier = ValueNotifier<int>(0);
 
   // SOS hold animation
   late AnimationController _sosHoldController;
@@ -71,6 +76,31 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
     if (reconnectGroupId != null) {
       SocketService.emit('join_group', reconnectGroupId);
     }
+  }
+
+  bool _shouldPollRoleSync(AuthState auth) {
+    return auth.role == 'pilgrim' && auth.moderatorRequestStatus == 'pending';
+  }
+
+  void _stopRoleSyncPolling() {
+    _roleSyncTimer?.cancel();
+    _roleSyncTimer = null;
+  }
+
+  void _configureRoleSyncPolling(AuthState auth, {bool runImmediate = false}) {
+    if (!_shouldPollRoleSync(auth)) {
+      _stopRoleSyncPolling();
+      return;
+    }
+
+    if (runImmediate) {
+      ref.read(authProvider.notifier).syncRoleWithServer();
+    }
+
+    _roleSyncTimer ??= Timer.periodic(const Duration(seconds: 60), (_) {
+      if (!mounted) return;
+      ref.read(authProvider.notifier).syncRoleWithServer();
+    });
   }
 
   @override
@@ -151,15 +181,15 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
           if (!mounted) return;
           final groupId = ref.read(pilgrimProvider).groupInfo?.groupId;
           if (groupId == null) return;
+          final map = data as Map<String, dynamic>;
           // Append the single message without a full reload (no spinner)
-          ref
-              .read(messageProvider.notifier)
-              .appendMessage(data as Map<String, dynamic>);
+          ref.read(messageProvider.notifier).appendMessage(map);
           if (_currentTab == 3) {
             // User is on Chat tab → mark as read immediately
             ref.read(messageProvider.notifier).markAllRead(groupId);
           }
-          // unreadCount was already bumped by appendMessage for other tabs
+          // Show in-app popup for the incoming message
+          _showMessagePopup(map);
         });
 
         // Listen for deleted messages — remove silently to avoid flicker
@@ -195,6 +225,23 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
         SocketService.on('notification_refresh', (_) {
           if (!mounted) return;
           ref.read(notificationProvider.notifier).refetch();
+          final auth = ref.read(authProvider);
+          if (_shouldPollRoleSync(auth)) {
+            ref.read(authProvider.notifier).syncRoleWithServer();
+          }
+        });
+
+        // Socket-first moderator request updates (approval/rejection)
+        SocketService.on('moderator-request-approved', (_) {
+          if (!mounted) return;
+          ref.read(notificationProvider.notifier).refetch();
+          ref.read(authProvider.notifier).syncRoleWithServer();
+        });
+
+        SocketService.on('moderator-request-rejected', (_) {
+          if (!mounted) return;
+          ref.read(notificationProvider.notifier).refetch();
+          ref.read(authProvider.notifier).fetchProfile();
         });
 
         // Listen for missed calls — refresh notifications so badge + list update
@@ -205,11 +252,9 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
       }
       // Fetch notification badge count
       ref.read(notificationProvider.notifier).fetchUnreadCount();
-      await ref.read(authProvider.notifier).syncRoleWithServer();
-      _roleSyncTimer = Timer.periodic(const Duration(seconds: 20), (_) {
-        if (!mounted) return;
-        ref.read(authProvider.notifier).syncRoleWithServer();
-      });
+      await ref.read(authProvider.notifier).fetchProfile();
+      if (!mounted) return;
+      _configureRoleSyncPolling(ref.read(authProvider), runImmediate: true);
       // Load suggested areas if in a group
       final gIdForAreas = ref.read(pilgrimProvider).groupInfo?.groupId;
       if (gIdForAreas != null) {
@@ -221,6 +266,7 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
 
   @override
   void dispose() {
+    _chatScrollNotifier.dispose();
     _sosHoldController.dispose();
     _sosPulseController.dispose();
     _mapController.dispose();
@@ -236,8 +282,89 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
     SocketService.off('area_deleted');
     SocketService.off('notification_refresh');
     SocketService.off('missed-call-received');
+    SocketService.off('moderator-request-approved');
+    SocketService.off('moderator-request-rejected');
     SocketService.offConnected(_onSocketConnected);
     super.dispose();
+  }
+
+  // ── In-app popup for incoming messages ───────────────────────────────────
+  void _showMessagePopup(Map<String, dynamic> map) {
+    if (!mounted) return;
+
+    // Don't show popup if user is already on the chat tab
+    if (_currentTab == 3) return;
+
+    try {
+      final msg = GroupMessage.fromJson(map);
+
+      // Don't show popup for our own messages
+      final myId = ref.read(authProvider).userId;
+      if (msg.sender?.id == myId) return;
+
+      final senderName = msg.sender?.fullName ?? 'notification_title'.tr();
+
+      if (msg.type == 'meetpoint') {
+        // Meetpoint message → special popup with Navigate button
+        final mpName =
+            msg.meetpointData?['name']?.toString() ?? 'meetpoint'.tr();
+        final lat = msg.meetpointData?['latitude'];
+        final lng = msg.meetpointData?['longitude'];
+        InAppPopup.showMeetpoint(
+          context,
+          name: mpName,
+          body: msg.content,
+          onNavigate: (lat != null && lng != null)
+              ? () {
+                  final url = Uri.parse(
+                    'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng',
+                  );
+                  launchUrl(url, mode: LaunchMode.externalApplication);
+                }
+              : null,
+        );
+      } else {
+        // Only show popup for urgent messages
+        if (!msg.isUrgent) return;
+
+        final body =
+            msg.content ??
+            (msg.type == 'voice' ? '🎤 ${'voice_message'.tr()}' : '');
+
+        String? playType;
+        String? playValue;
+        if (msg.isUrgent && msg.type == 'voice' && msg.mediaUrl != null) {
+          playType = 'voice';
+          playValue = ref
+              .read(messageProvider.notifier)
+              .buildUploadUrl(msg.mediaUrl!);
+        } else if (msg.isUrgent && msg.type == 'tts') {
+          playType = 'tts';
+          playValue = msg.originalText ?? msg.content ?? '';
+        }
+
+        InAppPopup.show(
+          context,
+          title: senderName,
+          body: body,
+          isUrgent: msg.isUrgent,
+          lockUntilDismiss: true,
+          playType: playType,
+          playValue: playValue,
+          onViewChat: () {
+            // Navigate to chat tab, mark read, and scroll to latest
+            setState(() => _currentTab = 3);
+            final groupId = ref.read(pilgrimProvider).groupInfo?.groupId;
+            if (groupId != null) {
+              ref.read(messageProvider.notifier).markAllRead(groupId);
+            }
+            _chatScrollNotifier.value++;
+          },
+        );
+      }
+    } catch (e) {
+      debugPrint('[InAppPopup] Error showing popup: $e');
+    }
   }
 
   Future<void> _showModeratorPromotionDialog() async {
@@ -538,6 +665,8 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
     });
 
     ref.listen(authProvider, (prev, next) {
+      _configureRoleSyncPolling(next);
+
       if (next.promotedToModeratorPending == true &&
           prev?.promotedToModeratorPending != true &&
           mounted) {
@@ -592,6 +721,7 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
           ? GroupInboxScreen(
               groupId: pilgrimState.groupInfo!.groupId,
               groupName: pilgrimState.groupInfo!.groupName,
+              scrollNotifier: _chatScrollNotifier,
             )
           : const _PlaceholderTab(
               icon: Symbols.chat_bubble,
@@ -647,13 +777,9 @@ class _PilgrimDashboardScreenState extends ConsumerState<PilgrimDashboardScreen>
           currentIndex: _currentTab,
           onTap: (i) {
             setState(() => _currentTab = i);
-            // Reload + mark messages as read when opening Chat tab
+            // Reload + mark read + scroll when opening Chat tab
             if (i == 3) {
-              final groupId = ref.read(pilgrimProvider).groupInfo?.groupId;
-              if (groupId != null) {
-                ref.read(messageProvider.notifier).loadMessages(groupId);
-                ref.read(messageProvider.notifier).markAllRead(groupId);
-              }
+              _chatScrollNotifier.value++;
             }
           },
           unreadMessages: ref.watch(messageProvider).unreadCount,

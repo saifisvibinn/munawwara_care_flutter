@@ -574,7 +574,7 @@ class _GroupsEmptyState extends StatelessWidget {
               width: 330.w,
               height: 270.h,
               fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) => Icon(
+              errorBuilder: (_, _, _) => Icon(
                 Symbols.mosque,
                 size: 220.w,
                 color: isDark

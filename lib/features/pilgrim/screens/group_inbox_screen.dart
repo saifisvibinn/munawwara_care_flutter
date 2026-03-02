@@ -22,10 +22,14 @@ class GroupInboxScreen extends ConsumerStatefulWidget {
   final String groupId;
   final String groupName;
 
+  /// Increment this notifier to trigger a scroll-to-bottom (e.g. on tab switch).
+  final ValueNotifier<int>? scrollNotifier;
+
   const GroupInboxScreen({
     super.key,
     required this.groupId,
     required this.groupName,
+    this.scrollNotifier,
   });
 
   @override
@@ -100,10 +104,19 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _load();
     });
+
+    // Listen for external scroll-to-bottom requests (e.g. tab switch)
+    widget.scrollNotifier?.addListener(_onExternalScroll);
+  }
+
+  void _onExternalScroll() {
+    // Reload messages + mark read + scroll to bottom
+    _load();
   }
 
   @override
   void dispose() {
+    widget.scrollNotifier?.removeListener(_onExternalScroll);
     _player.dispose();
     _tts.stop();
     _scrollController.dispose();
@@ -122,13 +135,15 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
   }
 
   void _scrollToBottom({bool jump = false}) {
+    // With reverse:true, offset 0 = bottom (newest messages).
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_scrollController.hasClients) return;
+      if (_scrollController.offset <= 0) return; // already at bottom
       if (jump) {
-        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        _scrollController.jumpTo(0);
       } else {
         _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
+          0,
           duration: const Duration(milliseconds: 350),
           curve: Curves.easeOut,
         );
@@ -271,9 +286,15 @@ class _GroupInboxScreenState extends ConsumerState<GroupInboxScreen> {
                       onRefresh: _load,
                       child: ListView.builder(
                         controller: _scrollController,
+                        reverse: true,
                         padding: EdgeInsets.fromLTRB(16.w, 8.h, 16.w, 24.h),
                         itemCount: filtered.length,
-                        itemBuilder: (_, i) => _buildCard(filtered[i]),
+                        itemBuilder: (_, i) {
+                          // reverse:true renders index 0 at the bottom;
+                          // map to the newest-first order so newest = bottom.
+                          final msg = filtered[filtered.length - 1 - i];
+                          return _buildCard(msg);
+                        },
                       ),
                     ),
             ),
